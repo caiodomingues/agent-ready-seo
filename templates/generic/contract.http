@@ -1,0 +1,160 @@
+# The agent layer as observable behavior
+#
+# This is what actually matters. The framework is an implementation detail of
+# these responses. If your stack produces them, the layer is correct, whatever
+# it is written in.
+#
+# Format: raw HTTP. Paste into an .http client, or read as a specification.
+
+### 1. The markdown twin exists at the page URL plus .md
+
+GET https://example.com/guides/onboarding.md
+
+# EXPECTED
+# HTTP/1.1 200 OK
+# Content-Type: text/markdown; charset=utf-8
+# Cache-Control: public, max-age=3600, s-maxage=3600
+# X-Robots-Tag: all
+# Link: <https://example.com/guides/onboarding>; rel="canonical"
+#
+# ---
+# title: Onboarding guide
+# source_url: https://example.com/guides/onboarding
+# updated: 2026-05-14
+# ---
+#
+# # Onboarding guide
+# ...
+#
+# NOTES
+# - The canonical MUST come from the document, not from the request path.
+# - X-Robots-Tag: all is deliberate. noindex here would also stop AI fetchers
+#   that respect it, which defeats the purpose of publishing the twin.
+
+
+### 2. A missing page is a 404, never an empty 200
+
+GET https://example.com/guides/does-not-exist.md
+
+# EXPECTED
+# HTTP/1.1 404 Not Found
+# Content-Type: text/plain; charset=utf-8
+#
+# 404 - not found
+#
+# An empty 200 is worse than a 404: it teaches an agent the page exists and is
+# blank, and it enters indexes as a real page.
+
+
+### 3. The home twin lives at /index.md and canonicals to the root
+
+GET https://example.com/index.md
+
+# EXPECTED
+# Link: <https://example.com/>; rel="canonical"
+#
+# Deriving the canonical from the path yields /index, which 404s. Pass the root
+# explicitly for this one page.
+
+
+### 4. The HTML page points at its twin
+
+GET https://example.com/guides/onboarding
+
+# EXPECTED (in the head)
+# <link rel="canonical" href="https://example.com/guides/onboarding">
+# <link rel="alternate" type="text/markdown" href="https://example.com/guides/onboarding.md">
+
+
+### 5. The map for models
+
+GET https://example.com/llms.txt
+
+# EXPECTED
+# Content-Type: text/plain; charset=utf-8
+#
+# # Site Name
+#
+# > One sentence about what this site is for.
+#
+# Markdown for agents: pages in the sections below also answer as clean markdown
+# by adding `.md` to the URL.
+#
+# ## Questions we answer
+# - How do I do X?: https://example.com/guides/x.md
+# ...
+#
+# RULE: every URL this file advertises must return 200. A promised convention
+# that 404s costs the trust of the whole file.
+
+
+### 6. The whole corpus, for bulk ingestion
+
+GET https://example.com/llms-full.txt
+
+# EXPECTED
+# Content-Type: text/plain; charset=utf-8
+# One file, every published page, generated from the same functions that render
+# the individual twins.
+
+
+### 7. Crawl rules
+
+GET https://example.com/robots.txt
+
+# EXPECTED
+# User-agent: *
+# Disallow: /api/
+# Disallow: /dashboard/
+# Allow: /
+# Allow: /api/og            <- more specific than the /api/ block
+#
+# User-agent: GPTBot
+# User-agent: ChatGPT-User
+# User-agent: ClaudeBot
+# User-agent: PerplexityBot
+# Allow: /
+#
+# Sitemap: https://example.com/sitemap.xml
+
+
+### 8. The sitemap lists HTML only
+
+GET https://example.com/sitemap.xml
+
+# EXPECTED
+# - No URL ending in .md. Listing both renderings asks to be assessed for
+#   duplicate content.
+# - <lastmod> present only where a real content date backs it.
+# - Every listed URL returns 200 and canonicals to itself.
+
+
+### 9. A clean arrival sets no cookie
+
+GET https://example.com/
+
+# EXPECTED
+# No Set-Cookie header. Writing a cookie on every visit invalidates the CDN
+# cache for the highest-traffic pages on the site.
+
+
+### 10. An arrival with a signal does set one
+
+GET https://example.com/
+Referer: https://chatgpt.com/
+
+# EXPECTED
+# Set-Cookie: first_touch=...; Max-Age=7776000; HttpOnly; SameSite=Lax; Secure
+
+
+### Verification one-liners
+#
+#   curl -sI https://example.com/guides/onboarding.md
+#   curl -s  https://example.com/guides/nope.md | head -1
+#   curl -s  https://example.com/llms.txt | grep -oE "https://[^ )]+\.md" | sort -u \
+#     | while read u; do echo "$(curl -s -o /dev/null -w '%{http_code}' "$u") $u"; done
+#   curl -s  https://example.com/sitemap.xml | grep -c "\.md</loc>"    # expect 0
+#   curl -sI https://example.com/ | grep -i set-cookie                 # expect nothing
+#
+# Run these against a production build. A dev server hides caching and bundling
+# failures that only appear once deployed.

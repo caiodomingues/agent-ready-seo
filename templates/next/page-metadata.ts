@@ -1,0 +1,98 @@
+/**
+ * Page metadata: canonical, the markdown alternate, social image, and a title
+ * that does not double the site name.
+ *
+ * CONTRACT (framework-neutral), in the HTML head of every content page:
+ *   <link rel="canonical" href="https://example.com/guides/x">
+ *   <link rel="alternate" type="text/markdown" href="https://example.com/guides/x.md">
+ *   <title>Page title | Site</title>          (site name appended exactly once)
+ *   <meta name="description" content="...">
+ *   og:title / og:description / og:image / og:url
+ */
+
+import type { Metadata } from "next";
+import { getGuide } from "@/content/guides";
+
+const SITE_URL = "https://example.com";
+const SITE_NAME = "Site";
+
+/* Root layout. The template appends the site name, so page titles must NOT
+ * include it themselves. `default` is used where a page sets no title.
+ *
+ * export const metadata: Metadata = {
+ *   metadataBase: new URL(SITE_URL),
+ *   title: { template: `%s | ${SITE_NAME}`, default: `${SITE_NAME} - short promise` },
+ * };
+ */
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const guide = getGuide(slug);
+  if (!guide) return {};
+
+  const url = `${SITE_URL}/guides/${slug}`;
+
+  return {
+    // No site name here. The root template appends it. Including it produces
+    // "Title | Site | Site", which hits exactly the hand-written pages.
+    // A year token keeps periodic content current without a content edit.
+    title: `${guide.title} (${new Date().getFullYear()})`,
+    description: guide.description,
+
+    alternates: {
+      canonical: url,
+      // This is the per-page discovery path for the twin. Pair it with the
+      // convention announced in llms.txt.
+      types: { "text/markdown": `${url}.md` },
+    },
+
+    openGraph: {
+      type: "article",
+      url,
+      title: guide.title,
+      description: guide.description,
+      images: [ogImageUrl(guide.title, guide.description, guide.category)],
+      publishedTime: guide.publishDate,
+      modifiedTime: guide.updatedAt,
+    },
+
+    twitter: {
+      card: "summary_large_image",
+      title: guide.title,
+      description: guide.description,
+    },
+  };
+}
+
+/**
+ * One image template for the whole site, parameterized. Re-skinning the template
+ * re-skins every page's image with no per-page work.
+ *
+ * The route lives under /api, so robots.txt must allow it explicitly or no
+ * preview renders anywhere. See robots.ts.
+ */
+export function ogImageUrl(title: string, description?: string, tag?: string): string {
+  const q = new URLSearchParams({ title });
+  if (description) q.set("description", description);
+  if (tag) q.set("tag", tag);
+  return `${SITE_URL}/api/og?${q.toString()}`;
+}
+
+/* Pages that must NOT be indexed (login, account, transactional confirmations)
+ * declare it on the page itself, which requires the page to stay crawlable so
+ * the directive can be read. Blocking it in robots.txt instead can leave a bare
+ * URL in the index with no way to remove it.
+ *
+ * export const metadata: Metadata = { robots: { index: false, follow: false } };
+ */
+
+/* PORTING
+ * The four tags above are plain HTML. Any templating layer can emit them.
+ * What travels less well is the title template: if the framework has no
+ * equivalent, build the full title in one helper and call it everywhere, so the
+ * doubling bug has a single place to be prevented.
+ */
