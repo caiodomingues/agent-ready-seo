@@ -34,21 +34,34 @@ templates/
 
 ## Install
 
+```sh
+npx skills add caiodomingues/agent-ready-seo
+```
+
+That works for Claude Code, Cursor, Codex, Copilot and the other agents the
+[skills CLI](https://skills.sh) supports: it detects which ones you have and
+puts the files where each expects them.
+
+<details>
+<summary>Manual install, without the CLI</summary>
+
 Claude Code loads skills from `~/.claude/skills/`. Clone and link:
 
 ```sh
-git clone https://github.com/<you>/agent-ready-seo.git
+git clone https://github.com/caiodomingues/agent-ready-seo.git
 ln -s "$(pwd)/agent-ready-seo" ~/.claude/skills/agent-ready-seo
 ```
 
-Or copy the directory in. On Windows, use a directory junction:
+On Windows, use a directory junction instead of a symlink:
 
 ```powershell
 New-Item -ItemType Junction -Path "$env:USERPROFILE\.claude\skills\agent-ready-seo" -Target "C:\path\to\agent-ready-seo"
 ```
 
-To scope it to one project instead, place it under that project's
-`.claude/skills/` directory.
+To scope it to one project rather than your whole machine, put it under that
+project's `.claude/skills/` directory.
+
+</details>
 
 The skill triggers on its own when a task involves AEO, GEO, `llms.txt`,
 structured data, programmatic pages, or AI referral attribution. You can also
