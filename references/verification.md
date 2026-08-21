@@ -90,6 +90,16 @@ claude mcp add --transport http is-agentic https://is-agentic.com/mcp
 Results are cached for about six hours, so a rescan right after a deploy may
 return the previous result.
 
+**Checks worth knowing about before you are scored on them.** A scan surfaces
+conventions you may not have met yet. Three that this skill covers because a real
+report flagged them:
+
+- `Accept: text/markdown` negotiation with `Vary: Accept`, separate from the
+  `.md` suffix. See `references/agent-layer.md`.
+- A 404 body an agent can recover from, rather than a bare status or an app shell.
+- A "when to use this" section in `llms.txt`, naming the jobs the site is right
+  for. See `references/agent-layer.md`.
+
 ### Reading a score honestly
 
 - **The evidence is the product, not the number.** The failed and partial

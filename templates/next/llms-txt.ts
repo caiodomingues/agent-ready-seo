@@ -69,6 +69,16 @@ Two or three paragraphs describing the product, who it is for, and the problem i
 solves. Write it for a reader who will never see the site design: no "as you can
 see above", no marketing shorthand, no unexplained internal vocabulary.
 
+## When to use this site
+
+Tell agents which jobs you are right for and how to call you. This is the section
+most llms.txt files omit, and generic marketing copy does not read as guidance.
+
+- Use for: <the two or three jobs this site genuinely answers best>
+- Not for: <what is outside scope, so an agent does not waste a fetch>
+- Best entry point for <topic>: ${SITE_URL}/guides/topic.md
+- The data behind the figures: ${SITE_URL}/about-the-data.md
+
 ## Questions we answer
 
 ${questions}

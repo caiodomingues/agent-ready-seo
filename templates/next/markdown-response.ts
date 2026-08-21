@@ -24,11 +24,22 @@ export function sourceUrlOf(doc: string): string | null {
   return /^source_url:\s*(\S+)\s*$/m.exec(doc)?.[1] ?? null;
 }
 
+const SITE_URL = "https://example.com";
+
+/** A 404 an agent can recover from, instead of a dead end. */
+const NOT_FOUND_BODY = `404 - not found
+
+This path does not exist. Try:
+- ${SITE_URL}/llms.txt (index of everything)
+- ${SITE_URL}/sitemap.xml
+- ${SITE_URL}/guides (nearest hub)
+`;
+
 export function markdownResponse(body: string | null): Response {
   if (body === null) {
-    return new Response("404 - not found\n", {
+    return new Response(NOT_FOUND_BODY, {
       status: 404,
-      headers: { "Content-Type": "text/plain; charset=utf-8" },
+      headers: { "Content-Type": "text/markdown; charset=utf-8" },
     });
   }
 
@@ -36,6 +47,9 @@ export function markdownResponse(body: string | null): Response {
     "Content-Type": "text/markdown; charset=utf-8",
     "Cache-Control": "public, max-age=3600, s-maxage=3600",
     "X-Robots-Tag": "all",
+    // Required when the same URL can also answer as HTML through Accept
+    // negotiation. Without it a CDN serves whichever variant it cached first.
+    Vary: "Accept",
   };
 
   const canonical = sourceUrlOf(body);
@@ -65,6 +79,102 @@ export function frontMatter(fields: {
   ];
   return `---\n${lines.join("\n")}\n---\n\n`;
 }
+
+/* ------------------------------------------------------------------ */
+/* Content negotiation: the same URL answering markdown on request      */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The suffix (`/path.md`) is one way to ask. `Accept: text/markdown` on the
+ * ordinary URL is the other, and external readiness scanners test for it.
+ * Implement both: the suffix serves an agent holding only a URL string, and
+ * negotiation serves an agent that fetches properly and should not have to
+ * guess a URL shape.
+ *
+ * Compliance is four things: serve markdown when asked, set `Vary: Accept`,
+ * return 406 for a type you cannot serve, and honor q-values so a browser still
+ * gets HTML.
+ */
+
+interface AcceptEntry {
+  type: string;
+  q: number;
+}
+
+function parseAccept(header: string | null): AcceptEntry[] {
+  if (!header) return [];
+  return header
+    .split(",")
+    .map((part) => {
+      const [type, ...params] = part.trim().split(";");
+      const q = params.map((p) => /^\s*q=([0-9.]+)\s*$/.exec(p)).find(Boolean)?.[1];
+      return { type: type.trim().toLowerCase(), q: q === undefined ? 1 : Number(q) };
+    })
+    .filter((e) => e.type)
+    .sort((a, b) => b.q - a.q);
+}
+
+/** True when the client prefers markdown over HTML. */
+export function prefersMarkdown(acceptHeader: string | null): boolean {
+  const entries = parseAccept(acceptHeader);
+  if (entries.length === 0) return false;
+
+  const md = entries.find((e) => e.type === "text/markdown")?.q ?? 0;
+  if (md === 0) return false;
+
+  const html = Math.max(
+    entries.find((e) => e.type === "text/html")?.q ?? 0,
+    entries.find((e) => e.type === "text/*")?.q ?? 0,
+    entries.find((e) => e.type === "*/*")?.q ?? 0,
+  );
+  return md > html;
+}
+
+/** True when the client accepts nothing this resource can produce, so 406. */
+export function acceptsNothingWeServe(acceptHeader: string | null): boolean {
+  const entries = parseAccept(acceptHeader);
+  if (entries.length === 0) return false;
+  const servable = new Set(["text/html", "text/markdown", "text/*", "*/*"]);
+  return !entries.some((e) => e.q > 0 && servable.has(e.type));
+}
+
+/*
+ * In middleware (or proxy.ts, depending on the Next.js version), applied ONLY to
+ * content routes so the cache split stays bounded:
+ *
+ *   export function middleware(req: NextRequest) {
+ *     const accept = req.headers.get("accept");
+ *
+ *     if (acceptsNothingWeServe(accept)) {
+ *       return new NextResponse("406 - not acceptable\n", {
+ *         status: 406,
+ *         headers: { "Content-Type": "text/plain; charset=utf-8", Vary: "Accept" },
+ *       });
+ *     }
+ *
+ *     if (prefersMarkdown(accept) && hasTwin(req.nextUrl.pathname)) {
+ *       const res = NextResponse.rewrite(new URL(`${req.nextUrl.pathname}.md`, req.url));
+ *       res.headers.set("Vary", "Accept");
+ *       return res;
+ *     }
+ *
+ *     // Every HTML response on a route that CAN negotiate must also vary, or the
+ *     // CDN hands the cached HTML to an agent that asked for markdown.
+ *     const res = NextResponse.next();
+ *     if (hasTwin(req.nextUrl.pathname)) res.headers.set("Vary", "Accept");
+ *     return res;
+ *   }
+ *
+ * `hasTwin` must be the same list the rewrites use. A route that negotiates but
+ * has no twin returns 404 for a page that renders fine in a browser, which is the
+ * worst possible outcome of adding this.
+ *
+ * Frameworks often set their own Vary for internal routing (Next.js sets rsc and
+ * router-state values). That does NOT cover Accept. Check the wire:
+ *
+ *   curl -sI -H "Accept: text/markdown" https://example.com/guides/onboarding \
+ *     | grep -iE "content-type|vary"
+ */
 
 /* PORTING
  * Express / Hono / Fastify: set the same four headers on the response object;

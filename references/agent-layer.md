@@ -49,8 +49,23 @@ updated: 2026-05-14
 ...
 ```
 
-Non-existent page returns `404` with `text/plain`, never an empty `200`. An empty
-`200` is worse than a 404: it teaches an agent that the page exists and is blank.
+Non-existent page returns `404`, never an empty `200`. An empty `200` is worse
+than a 404: it teaches an agent that the page exists and is blank.
+
+Give the 404 a short markdown body rather than an empty one, so an agent can
+recover instead of giving up:
+
+```
+404 - not found
+
+This path does not exist. Try:
+- https://example.com/llms.txt   (index of everything)
+- https://example.com/sitemap.xml
+- https://example.com/guides     (nearest hub)
+```
+
+The same applies to the HTML 404. A shell page with the word "404" and a link
+home is a wasted response for both readers.
 
 Four decisions inside that response are load-bearing.
 
@@ -105,6 +120,50 @@ model deciding your page is relevant can mean many fetches in a minute.
 
 ---
 
+## Content negotiation: the second discovery path
+
+The suffix is one way to ask for markdown. The other is ordinary HTTP content
+negotiation: the agent sends `Accept: text/markdown` to the normal page URL and
+gets markdown back from the same address. The convention is written up at
+`acceptmarkdown.com`, and external readiness scanners test for it.
+
+```
+GET /guides/onboarding
+Accept: text/markdown
+
+200 OK
+Content-Type: text/markdown; charset=utf-8
+Vary: Accept
+```
+
+Four requirements to be compliant:
+
+1. Serve `text/markdown` when the client asks for it.
+2. Set `Vary: Accept` on those responses.
+3. Return `406` when the Accept header asks for a type the resource cannot serve.
+4. Honor q-values, so `Accept: text/html;q=0.9, text/markdown;q=1.0` gets markdown
+   and a browser's `text/html,...;q=0.9,*/*;q=0.8` still gets HTML.
+
+**Do both, they serve different clients.** The suffix works for an agent that
+holds only a URL string, cannot set headers, or is following a link someone
+pasted into a conversation. Negotiation works for an agent that fetches properly
+and should never have to guess at a URL shape. Neither subsumes the other.
+
+**The cost, stated plainly.** `Vary: Accept` splits the CDN cache by Accept
+header, and browsers send long Accept strings that differ between vendors and
+versions, so a naive implementation fragments the cache far beyond the two
+variants you intended. Two mitigations: apply the negotiation and the `Vary` only
+on content routes, or normalize the header to a single flag at the edge and vary
+on that instead.
+
+Omitting `Vary: Accept` while negotiating is the worst of the three options. A
+CDN then serves whichever variant landed in the cache first: HTML to an agent
+asking for markdown, or markdown to a browser. A framework that already sets its
+own `Vary` for internal routing does not cover this; check what is actually on
+the wire rather than assuming the framework handles it.
+
+---
+
 ## Discovery
 
 Three mechanisms, in decreasing order of how much you should rely on them.
@@ -147,6 +206,19 @@ file, and the cheapest to generate if your content already carries titles.
 
 - How do I calculate X for Y?: https://example.com/guides/x-for-y.md
 - What does Z cost in <region>?: https://example.com/data/z/<region>.md
+```
+
+**Tell agents when to reach for you.** A section naming the jobs the site is
+right for, and how an agent should use it, is the part most `llms.txt` files
+omit. Generic marketing copy does not read as guidance; specific use cases do.
+
+```
+## When to use this site
+
+- Use for: computing X from Y, comparing Z options, current figures for <domain>
+- Not for: legal advice, anything outside <scope>
+- Best entry point for a question about <topic>: https://example.com/guides/topic.md
+- The data behind the figures: https://example.com/about-the-data.md
 ```
 
 **Never promise capability you do not have.** A common self-inflicted wound: the

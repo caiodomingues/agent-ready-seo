@@ -139,6 +139,10 @@ the code, because the gap between them is the point.
 
 - [ ] `/{path}.md` returns 200, `text/markdown`, and a canonical `Link` header
 - [ ] Missing pages return 404, not an empty 200
+- [ ] The 404 body points at recovery paths (`llms.txt`, sitemap, nearest hub)
+- [ ] `Accept: text/markdown` on a content URL returns markdown, with `Vary: Accept`
+- [ ] An Accept header the resource cannot satisfy returns 406, and q-values are honored
+- [ ] `llms.txt` has a "when to use this" section naming real jobs
 - [ ] The home twin canonicals to the root, not to `/index`
 - [ ] `llms.txt` claims match reality, section by section
 - [ ] `llms.txt` and `llms-full.txt` are generated from live content
