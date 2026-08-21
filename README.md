@@ -26,6 +26,7 @@ references/
   schema-catalog.md      which structured data type per page type, and the traps
   measurement.md         first-touch attribution, why AI referrals hide
   pitfalls.md            failure catalog and a full audit checklist
+  verification.md        production checks, external scorers, CI wiring
 templates/
   next/                  working Next.js App Router implementations
   generic/               the same contract as raw HTTP, plus plain Node
@@ -80,6 +81,12 @@ programmatic pages, technical foundations, structured data, attribution.
 **Out of scope:** acquiring the data in the first place. Collection, licensing
 and normalization are a separate discipline with their own legal and ethical
 constraints. This skill assumes the data exists and is yours to publish.
+
+**Also out of scope:** making the product itself agent-operable (authentication an
+agent can complete, controls it can drive, an API or MCP server for your product,
+machine-payable checkout). External readiness scorers weight those heavily, so
+following this skill completely will not produce a perfect score. See
+`references/verification.md` for the mapping.
 
 ## Provenance
 

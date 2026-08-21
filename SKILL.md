@@ -42,6 +42,7 @@ Read the reference for the layer in play. Do not read all of them.
 | Decide which structured data type a page needs | `references/schema-catalog.md` | `templates/next/dataset-jsonld.ts` |
 | Know whether any of it worked, and where AI traffic lands | `references/measurement.md` | `templates/next/first-touch.ts` |
 | Audit an existing site, or review a plan before building | `references/pitfalls.md` | none |
+| Check that any of it actually works, in production or in CI | `references/verification.md` | none |
 
 Templates are working code with the framework-neutral contract stated at the top
 of each file. `templates/generic/` holds the same contract as raw HTTP plus one
@@ -71,6 +72,8 @@ backwards: writing a hundred pages before having anything different to say.
    Do it after the base is ready, because it mirrors content that already exists.
 7. **Instrument before expecting results.** First-touch attribution and search
    console configured before traffic arrives, or the first months are lost data.
+   Verify the layer against production, and consider an external scorer as a
+   second opinion. See `references/verification.md`.
 8. **Treat the data as a recurring publication.** An index that stops updating
    stops being citable within two months. The routine is part of the asset.
 
@@ -134,6 +137,12 @@ matters. The framework is an implementation detail of that contract.
 **In scope.** Publishing and serving: the agent layer, citable datasets,
 programmatic pages, the technical base, structured data, attribution of AI
 referrals.
+
+**Also out of scope.** Making the *product* operable by an agent: authentication
+an agent can complete, controls it can drive, an API or MCP server for your
+product, a machine-payable checkout. External scorers weight those heavily, so a
+site that follows this skill completely will still not score full marks. That is
+expected. See the layer mapping in `references/verification.md`.
 
 **Out of scope.** Acquiring the data in the first place (scraping, licensing,
 normalization pipelines) is a separate discipline with its own legal and ethical

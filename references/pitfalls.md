@@ -159,6 +159,8 @@ the code, because the gap between them is the point.
 - [ ] No signal classified as `direct`; unattributed is a visible category
 - [ ] Attribution write cannot break signup
 - [ ] Clean arrivals set no cookie, so caching still applies
+- [ ] An external agent-readiness scan has been run, and its failed check IDs
+      recorded rather than just the score (see `verification.md`)
 
 ### Claims
 
