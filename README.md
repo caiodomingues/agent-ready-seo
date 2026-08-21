@@ -42,6 +42,18 @@ That works for Claude Code, Cursor, Codex, Copilot and the other agents the
 [skills CLI](https://skills.sh) supports: it detects which ones you have and
 puts the files where each expects them.
 
+It installs into the current project by default, which is what you want when the
+team should get the skill from the repository. Add `-g` to install it once for
+every project instead:
+
+```sh
+npx skills add caiodomingues/agent-ready-seo -g
+```
+
+Project installs leave `.agents/skills/`, an agent-specific symlink and a
+`skills-lock.json` in the working tree, so either commit them on purpose or add
+them to `.gitignore`.
+
 <details>
 <summary>Manual install, without the CLI</summary>
 
