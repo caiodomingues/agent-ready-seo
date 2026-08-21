@@ -1,7 +1,7 @@
 /**
  * The agent layer without a meta-framework: Express, Node, no build step.
  *
- * Implements the same contract as ../generic/contract.http and
+ * Implements the same contract as ./contract.http and
  * ../next/markdown-response.ts. Roughly a hundred lines, which is the point:
  * the layer is a handful of headers and a generator, not a platform feature.
  *
