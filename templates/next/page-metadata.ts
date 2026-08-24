@@ -19,9 +19,16 @@ const SITE_NAME = "Site";
 /* Root layout. The template appends the site name, so page titles must NOT
  * include it themselves. `default` is used where a page sets no title.
  *
+ * No `alternates.canonical` here: it would be inherited by every page that
+ * does not override it, and each would then claim to duplicate the home page.
+ * `openGraph.siteName` is what stops the engine deriving the site name from
+ * the domain; pages that declare their own `openGraph` must repeat it, because
+ * the page object replaces the layout's rather than merging.
+ *
  * export const metadata: Metadata = {
  *   metadataBase: new URL(SITE_URL),
  *   title: { template: `%s | ${SITE_NAME}`, default: `${SITE_NAME} - short promise` },
+ *   openGraph: { siteName: SITE_NAME },
  * };
  */
 
@@ -53,6 +60,7 @@ export async function generateMetadata({
     openGraph: {
       type: "article",
       url,
+      siteName: SITE_NAME,
       title: guide.title,
       description: guide.description,
       images: [ogImageUrl(guide.title, guide.description, guide.category)],

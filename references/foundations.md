@@ -88,6 +88,12 @@ Disallow: /api/
 Allow: /api/og
 ```
 
+**4. Check that the edge agrees.** A CDN "block AI bots" or "AI labyrinth"
+toggle overrides the file silently: the allow rules keep shipping and the bots
+never arrive. Verify from outside with the user agent (`curl -A GPTBot`), and
+keep a note of the dashboard setting next to the robots source so the next
+audit knows to look there.
+
 Remember what `robots.txt` does not do. It is a crawl instruction, not access
 control and not a way to keep a page out of the index. A disallowed URL that is
 linked from elsewhere can still appear as a bare result. Use `noindex` on the page
@@ -114,6 +120,12 @@ Where it matters most, in practice:
 
 A canonical is a hint, not a directive. Contradicting it with internal links,
 sitemap entries or redirects that point elsewhere makes it likely to be ignored.
+
+**Never declare it on the root layout.** In frameworks where page metadata
+inherits from the layout (Next.js among them), a root canonical is inherited by
+every page that does not override it, and each of those then declares itself a
+duplicate of the home page. `metadataBase` belongs on the root; `canonical`
+belongs on the page.
 
 ---
 
@@ -142,6 +154,18 @@ it stays current without a content edit:
 title: `${label} pricing guide (${new Date().getFullYear()})`
 ```
 
+**Tell the engine the site name explicitly.** Google picks the name shown next to
+a result from `og:site_name` and `WebSite.name`. Without them it derives one from
+the domain, and on a product living at `product.company.tld` it picks the
+company. Emit both from one constant, and once a page declares its own
+`openGraph` block, repeat `siteName` there: in Next.js the page object replaces
+the layout's, it does not merge.
+
+**Descriptions at scale must differ per instance, not per type.** A hundred
+generated pages sharing one templated sentence read as mass-duplicated
+descriptions. Put a figure from the instance in it (count, date, place), which
+is also the part an answer engine quotes.
+
 ---
 
 ## Entities and authorship
@@ -167,6 +191,20 @@ companies and neither accumulates the other's authority. The failure mode to
 watch for: a child property referencing an `@id` that the parent never declares,
 so the reference dangles.
 
+**`sameAs` means the same entity, nothing weaker.** A parent company is
+`parentOrganization`, not `sameAs`: listing the parent's domain under `sameAs`
+merges the two and hands the parent's name to your results. Social accounts go
+in `sameAs` only when they are the organization's own. On a site whose public
+accounts belong to characters, personas or a founder, leave the property out;
+a guessed URL there is worse than none.
+
+**Trust anchors.** Before recommending a business, an agent looks for the pages
+a person would: `/about` and `/contact`, public, with real content (who operates
+the site, the legal entity, what it does and does not do, how to reach it), and
+an `Organization` with `contactPoint` and, where one is public, `address`. Mark
+them `AboutPage` and `ContactPage`, tied to the organization by `@id`. They are
+the pages readiness scorers check first and most sites never wrote.
+
 **Real authorship on editorial content.** A named person, a visible date, a
 `Person` entity, and an author page that actually exists and is linked from the
 byline. Content without an author is content without anyone accountable for it,
@@ -174,6 +212,11 @@ which is what the E-E-A-T guidelines are ultimately measuring.
 
 Do not invent credentials. An honest short bio outperforms an inflated one the
 moment anyone checks.
+
+**Content written by an agent still needs a cadence.** When the blog is authored
+through an LLM tool rather than a CMS, nothing forces publication to happen.
+Put the rhythm somewhere visible (a schedule on the content object, a recurring
+task) and treat a quiet month as a defect, the same way a stalled index is.
 
 ---
 

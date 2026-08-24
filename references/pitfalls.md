@@ -89,6 +89,51 @@ created. Records nothing, breaks nothing, discovered a month later.
 **Empty `200` instead of `404`.** A generated route rendering an empty shell when
 data is missing. Worse than a 404, because it enters the index as a real page.
 
+**The auth layer turning every unknown path into a page.** A gated product with a
+public marketing surface usually has a default-deny middleware: anything not on
+the public allowlist redirects to `/login`, and `/login` answers 200. So
+`/definitely-not-a-page` is a 307 followed by a 200, and every agent that probes
+concludes every URL on the site exists. External scorers flag this as a soft-404
+on the whole domain. It is invisible from inside the product, because every
+path a human types is a real one. Fix in `references/agent-layer.md` (gated
+applications) and `templates/next/gated-app-404.ts`.
+
+**An edge toggle overriding `robots.txt`.** A CDN's "block AI bots" or
+"AI labyrinth" switch blocks the named crawlers at the edge, and nothing in the
+repository changes. The allow rules are still emitted, still reviewed, still
+wrong. Test with the user agent from outside (`curl -A GPTBot`), not by reading
+the file, and record the dashboard setting next to the robots source.
+
+**A root-level canonical that cascades.** In frameworks where page metadata
+inherits from the layout, a canonical declared at the root is inherited by
+every page that does not override it, and each of them then claims to be a
+duplicate of the home page. Declare the canonical per page, never on the root.
+
+**A global trailing-slash flag breaking an exact-match allowlist.** Turning off
+the framework's trailing-slash normalization for one route (an analytics
+ingest path that treats a 308 as a failed send) turns it off everywhere. A
+public allowlist that matches `pathname === "/privacy"` then misses
+`/privacy/`, which falls into the auth gate. Re-emit the normalization in the
+middleware for every path except the one that needed the exception.
+
+**A case-insensitive redirect that matches itself.** A `/states/rj` to
+`/states/RJ` redirect on a host whose route matching is case-insensitive
+matches its own destination and loops. Check how the host matches before
+adding a case-normalizing redirect.
+
+**`sameAs` pointing at the wrong entity.** `sameAs` asserts "this is the same
+thing". A product site listing its parent company's domain there tells the
+engine the two are one entity, and the site name shown in results becomes the
+parent's. Use `parentOrganization` for a parent brand, and leave `sameAs` empty
+rather than pointing it at social accounts that belong to a character or a
+person instead of the organization.
+
+**Negotiating a URL that is already the twin.** With both the `.md` suffix and
+`Accept` negotiation live, an agent may send the `.md` URL and the header. A
+matcher whose slug pattern is `[^/]+` captures `x.md` as the slug, resolves a
+twin for the twin, and 404s on a URL that works without the header. Skip
+negotiation for any path that already ends in the suffix, and test that pair.
+
 ---
 
 ## Audit checklist
@@ -100,7 +145,9 @@ the code, because the gap between them is the point.
 
 - [ ] One canonical host, the other permanently redirected, only the canonical form emitted anywhere
 - [ ] `robots.txt` blocks the application area and nothing public
-- [ ] AI crawlers explicitly allowed, list still current
+- [ ] AI crawlers explicitly allowed, list still current, and confirmed from
+      outside with `curl -A <bot>` (an edge toggle can override the file)
+- [ ] A random unknown path returns 404, not a redirect to login or an app shell
 - [ ] Social image route reachable despite any `/api/` block
 - [ ] `sitemap.xml` present, listed in `robots.txt`, and its URL count matches what the content registry should produce
 - [ ] `lastmod` absent unless a real content date backs it
@@ -109,7 +156,8 @@ the code, because the gap between them is the point.
 
 ### Duplication
 
-- [ ] Every page self-canonicals to the clean URL on the canonical host
+- [ ] Every page self-canonicals to the clean URL on the canonical host, and no
+      canonical is declared on the root layout
 - [ ] Paginated pages self-canonical rather than pointing at page 1
 - [ ] Alternate renderings canonical to the HTML page
 - [ ] Alternate renderings stay out of the sitemap
@@ -130,6 +178,12 @@ the code, because the gap between them is the point.
 - [ ] Declared claims match the visible page, checked by reading, not by validator
 - [ ] Organization declared once with a stable `@id`, referenced by `@id` elsewhere
 - [ ] Multiple properties reference the same organization `@id`
+- [ ] Organization carries `contactPoint` (and `address` where one is public);
+      `sameAs` names only accounts that ARE the organization
+- [ ] `/about` and `/contact` exist, are public, and carry real content
+- [ ] `og:site_name` and `WebSite.name` agree, so the engine does not derive the
+      site name from the domain
+- [ ] FAQ markup and the visible FAQ are fed by the same array, not two strings
 - [ ] No `AggregateRating` without real reviews; no `Review` without a rating
 - [ ] `SearchAction` only if the parameter genuinely works
 - [ ] `Dataset` blocks carry description, creator and license
@@ -142,6 +196,10 @@ the code, because the gap between them is the point.
 - [ ] The 404 body points at recovery paths (`llms.txt`, sitemap, nearest hub)
 - [ ] `Accept: text/markdown` on a content URL returns markdown, with `Vary: Accept`
 - [ ] An Accept header the resource cannot satisfy returns 406, and q-values are honored
+- [ ] The `.md` URL with `Accept: text/markdown` still returns the twin (no
+      double negotiation)
+- [ ] `llms-full.txt` stays under a stated byte budget, with overflow listed as
+      links rather than dropped
 - [ ] `llms.txt` has a "when to use this" section naming real jobs
 - [ ] The home twin canonicals to the root, not to `/index`
 - [ ] `llms.txt` claims match reality, section by section

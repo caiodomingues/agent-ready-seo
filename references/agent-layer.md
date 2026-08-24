@@ -112,6 +112,17 @@ it says "you may index this if you find it", while the canonical says "but credi
 the HTML page". Blocking the twin with `noindex` would also stop some AI fetchers
 from using it, which defeats the purpose.
 
+Two deviations teams choose on purpose, and the trade they are making:
+
+- **`noindex` on `llms-full.txt` only.** The full file is a verbatim copy of
+  every article on the same origin, and unlike a twin it has no single page to
+  canonical to. Some sites accept that a bulk-ingestion pipeline does not care
+  about the robots header and mark just that file `noindex`, keeping `all` on
+  the per-page twins. Defensible; say so in a comment next to the header.
+- **`llms.txt` inside the sitemap.** Strictly a text file for agents, but on a
+  site where no page links to it, the sitemap is its only discovery path for a
+  search crawler. Harmless as long as `llms-full.txt` stays out.
+
 ### 4. Cache it
 
 An hour of shared cache is usually right. The twin is derived content, so
@@ -162,6 +173,51 @@ asking for markdown, or markdown to a browser. A framework that already sets its
 own `Vary` for internal routing does not cover this; check what is actually on
 the wire rather than assuming the framework handles it.
 
+**Do not negotiate a URL that already carries the suffix.** Once both paths are
+live and `llms.txt` documents both, a compliant agent may send the `.md` URL
+*and* `Accept: text/markdown`. A page matcher whose slug is `[^/]+` captures
+`x.md` as the slug and resolves a twin for the twin, so the request 404s on a URL
+that works fine without the header. Return "no twin" for any path ending in the
+suffix before matching, and test that exact pair. Negotiate `GET` and `HEAD`
+both; a probe that only sends `HEAD` is otherwise told the feature is absent.
+
+---
+
+## Gated applications: the auth layer is where the soft-404 lives
+
+A product with a public marketing surface and a logged-in app usually gates with
+a default-deny middleware: every path not on a public allowlist redirects to
+`/login`. `/login` answers 200. So `GET /definitely-not-a-page` is a 307 and then
+a 200, and every agent that probes the site concludes that every URL exists.
+External scorers report it as a soft-404 across the domain, and the team never
+sees it, because every path a human types is a real one.
+
+The fix keeps default-deny and adds one distinction: a path that is a real
+gated area redirects to login; a path that is nothing gets a 404.
+
+1. **One list of gated prefixes, shared.** The first segment of every logged-in
+   area lives in a dependency-free module that both `robots.txt` (disallow) and
+   the middleware read. A path outside both that list and the public allowlist
+   is unknown.
+2. **A test compares the list with the route directory,** in both directions: a
+   new area not registered fails, a registered area that no longer exists fails.
+   That is what makes the list trustworthy enough to gate on.
+3. **Unknown and unauthenticated → 404, never `next()`.** For a browser
+   (`Accept` includes `text/html`), rewrite to a path that cannot be a route
+   (`/.not-found`), so the framework renders its own 404 page with a real 404
+   status. For anything else, return the markdown 404 body from the contract
+   above. Because the branch never falls through to the handler, an area that
+   someone forgets to register stays closed; it only loses its redirect.
+4. **Authenticated requests are untouched.** The framework already 404s an
+   unknown route for a logged-in user.
+
+Two side effects worth knowing. `/inicio.md` style probes, where an app prefix
+carries the suffix, now 404 instead of redirecting; that is correct. And the
+gated list doubles as the source for `robots.txt`, which is how the audit
+usually finds two or three areas the robots file had never heard of.
+
+Worked implementation for Next.js middleware: `templates/next/gated-app-404.ts`.
+
 ---
 
 ## Discovery
@@ -192,6 +248,18 @@ agent can generalize instead of enumerating.
 Two distinct consumption modes. An agent browsing wants the map and will fetch
 the one page it needs. A pipeline doing bulk ingestion wants a single file and no
 crawl.
+
+**Give `llms-full.txt` a byte budget.** Its reader is a context window. Around
+300 KB of Portuguese or English prose is roughly 75k tokens, and past that the
+tail is never read. Fill newest-first up to the budget, always admit at least
+one article, and list the overflow as title plus link under its own heading, so
+the file says "these exist, fetch them" instead of silently truncating. A budget
+that is stated in the file's own comment is one an audit can check.
+
+**Sample links should be real.** When `llms.txt` shows a worked example of the
+`.md` pattern, take the example slug from the live content (the newest post, the
+first product) rather than hardcoding one. A hardcoded example is the first link
+on the page to rot, and it rots on the page whose whole job is trust.
 
 Write `llms.txt` as prose plus annotated links, not a bare URL list. Each link
 gets a sentence about what that page answers, because that sentence is what lets

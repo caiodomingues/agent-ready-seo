@@ -2,7 +2,7 @@
 name: agent-ready-seo
 description: Use when a site needs to be readable and citable by AI answer engines as well as search crawlers. Covers the markdown twin layer, llms.txt, structured data, programmatic pages backed by real data, publishing a citable dataset, and attributing AI referrals. Also use when the user mentions "AEO", "GEO", "answer engine optimization", "generative engine optimization", "llms.txt", "llms-full.txt", "markdown version of my pages", "get cited by ChatGPT", "AI search traffic", "AI crawlers", "JSON-LD", "structured data", "Dataset schema", "programmatic SEO", "thin content", "doorway pages", "sitemap", "canonical", "IndexNow", or "where is my AI traffic coming from". For persuasion and page copy see copywriting; for classic on-page issue hunting see seo-audit.
 metadata:
-  version: 1.0.0
+  version: 1.1.0
 license: MIT
 ---
 
@@ -36,6 +36,7 @@ Read the reference for the layer in play. Do not read all of them.
 | The user wants to | Read | Then copy from |
 | --- | --- | --- |
 | Serve clean text to LLMs, add `llms.txt`, avoid duplicate-content risk | `references/agent-layer.md` | `templates/next/markdown-response.ts`, `md-route.ts`, `rewrites.ts`, `page-metadata.ts`, `llms-txt.ts` |
+| Make a gated SaaS (public marketing + logged-in app) stop answering 200 for every path | `references/agent-layer.md` (gated applications) | `templates/next/gated-app-404.ts` |
 | Turn proprietary data into something quotable: an index, a dated snapshot, a methodology page | `references/citable-data.md` | `templates/next/index-basket.ts`, `dataset-jsonld.ts` |
 | Generate many pages from data without creating thin content | `references/pseo.md` | `templates/next/sitemap.ts`, `sitemap-sharded.ts` |
 | Fix the technical base: sitemap, robots, canonical, titles, IndexNow, social images | `references/foundations.md` | `templates/next/sitemap.ts`, `robots.ts` |
@@ -108,6 +109,11 @@ rest of the work.
   template is written, not after the penalty.
 - **No invented ratings, no fabricated review counts.** Aggregate rating markup
   without real reviews is the fastest way to lose rich results permanently.
+- **An unknown path answers 404, even behind an auth gate.** A default-deny
+  middleware that redirects everything to a 200 login page tells every agent
+  that every URL exists. Keep the deny; distinguish "gated" from "nothing".
+- **Verify against the deployed site, from outside.** The edge can override
+  `robots.txt`, the framework can drop a header, and a dev server hides both.
 
 ---
 

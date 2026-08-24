@@ -115,10 +115,11 @@ following this skill completely will not produce a perfect score. See
 
 ## Provenance
 
-Extracted from shipping two production properties: a content and tooling site
-with roughly 120 indexed pages, and a data property with roughly 48,000. Every
-rule here has a failure behind it that was hit and fixed, not a best practice
-copied from a list. Examples are anonymized.
+Extracted from shipping three production properties: a content and tooling site
+with roughly 120 indexed pages, a data property with roughly 48,000, and a gated
+SaaS whose only public surface is a landing page and a blog. Every rule here has
+a failure behind it that was hit and fixed, not a best practice copied from a
+list. Examples are anonymized.
 
 ## Contributing
 

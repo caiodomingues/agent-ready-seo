@@ -55,6 +55,7 @@ so the class of bug cannot exist.
 | Data or index page | `Dataset` | `BreadcrumbList`, `Place` for coverage |
 | Methodology page | `TechArticle` | `BreadcrumbList` |
 | Author page | `ProfilePage` + `Person` | |
+| About / contact | `AboutPage` / `ContactPage` | `about` and `mainEntity` pointing at the organization `@id` |
 | Home | `WebSite` + `Organization` | `SearchAction` if you have site search |
 | Any nested page | `BreadcrumbList` | |
 
@@ -84,6 +85,20 @@ mark up questions that exist solely in the JSON-LD.
 Rich-result eligibility for FAQ has narrowed considerably over time, so treat the
 value as mostly AEO: it is a clean, machine-readable question-to-answer mapping,
 which is exactly the shape an answer engine wants.
+
+**Feed the block and the visible list from one array.** The failure above (a
+declared answer contradicting the page) only exists when the FAQ is typed twice.
+One `faqs` constant, or one set of translation keys, rendered into both the
+`<dl>` and the JSON-LD, makes the divergence impossible rather than merely
+audited. Strip rich-text tags before they reach the block.
+
+### Speakable
+
+`SpeakableSpecification` on an article, with a CSS selector (`h1`,
+`[data-speakable]`) that wraps the one sentence answering the question the
+article exists for. Cheap, and it is a direct hint to voice assistants and
+summarizers about which line to lift. Mark exactly one sentence; marking the
+whole body says nothing.
 
 ### HowTo
 
@@ -136,6 +151,16 @@ Two specific rules:
 - `AggregateRating` needs a real count from real, verifiable reviews. Absent that,
   ship real `Review` objects with named authors and no aggregate, and accept
   having no stars.
+
+### What to leave out under a legal constraint
+
+Structured data is a second, machine-readable copy of the page, so anything the
+page deliberately withholds must be withheld there too. A price index that
+pseudonymizes its sources renders `Product` without `seller` and without
+`offers.url`, because either would name the retailer the page hides. Write the
+omission down next to the block, and back it with a test that scans everything
+under the public output directory for the forbidden identifiers: a redaction
+that only lives in one component is one refactor from leaking.
 
 ### WebSite and SearchAction
 

@@ -22,6 +22,14 @@ SITE=https://example.com
 curl -sI  $SITE/guides/onboarding.md | grep -iE "^HTTP|content-type|^link"
 curl -s   $SITE/guides/does-not-exist.md | head -1        # 404 body, not HTML
 curl -s   $SITE/index.md | grep source_url                # canonical is "/", not "/index"
+curl -s -o /dev/null -w '%{http_code}\n' -H "Accept: text/markdown" $SITE/guides/onboarding      # 200 markdown
+curl -s -o /dev/null -w '%{http_code}\n' -H "Accept: text/markdown" $SITE/guides/onboarding.md   # 200, not renegotiated
+curl -s -o /dev/null -w '%{http_code}\n' -H "Accept: application/json" $SITE/guides/onboarding   # 406
+
+# Soft-404 on the whole domain, not just the twin. A gated app's auth
+# middleware is the usual culprit: 307 to /login, which answers 200.
+curl -s -o /dev/null -w '%{http_code}\n' $SITE/definitely-not-a-page              # 404
+curl -s -o /dev/null -w '%{http_code}\n' -H "Accept: text/html" $SITE/definitely-not-a-page   # 404, HTML body
 
 # Every URL the map advertises must exist
 curl -s $SITE/llms.txt | grep -oE "https://[^ )]+\.md" | sort -u \
@@ -99,6 +107,20 @@ report flagged them:
 - A 404 body an agent can recover from, rather than a bare status or an app shell.
 - A "when to use this" section in `llms.txt`, naming the jobs the site is right
   for. See `references/agent-layer.md`.
+
+Three more that a report on a gated SaaS failed, none of which read as SEO work
+until a scanner asks for them:
+
+- **A real 404 for unknown paths.** The default-deny auth middleware answered
+  every probe with a redirect to a 200 login page. See `references/pitfalls.md`
+  and `templates/next/gated-app-404.ts`.
+- **Trust anchors.** Public `/about` and `/contact` pages with real content, and
+  an `Organization` with `contactPoint` and, where one is public, `address`.
+  These are what an agent checks before recommending a business. See
+  `references/foundations.md`.
+- **Brand-name discoverability.** A search for the bare brand returning the
+  domain. Not fixable in code when the name is a common word; record it as a
+  known failure rather than chasing it.
 
 ### Reading a score honestly
 

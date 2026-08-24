@@ -155,6 +155,25 @@ convention you documented and receiving 404s.
 
 ---
 
+## More than one property
+
+A data subdomain, a tools subdomain and the main site are one business to a
+model and three sites to an analytics tool. Two decisions keep them measurable
+as one:
+
+- **Share the analytics property and the pixel** across subdomains. The
+  first-party cookie lives on the root domain, so a session that starts on the
+  data property and converts on the main site stays one session; filter by
+  hostname inside the property instead of splitting it.
+- **Cross-property links carry a campaign parameter and are followed.** A footer
+  link from the data property to the product with `utm_source=<property>`
+  attributes the referral on arrival, and leaving it followed (no `noreferrer`,
+  no `nofollow`) passes the authority the data property earns. Treat the two
+  properties as one entity in structured data too: the same organization `@id`
+  on both. See `references/foundations.md`.
+
+---
+
 ## Link signals from a badge
 
 If you publish an embeddable badge (see `references/citable-data.md`), the

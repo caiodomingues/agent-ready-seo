@@ -81,6 +81,19 @@ if (coverage < MIN_COVERAGE) notFound();
 page that exists in order to say nothing still gets crawled, still enters the
 index, and still dilutes the average quality of your site.
 
+The one exception: an entity that genuinely exists (a product in the catalog, a
+city with one store) but has no data worth a page *this period*. There, a real
+page marked `robots: noindex` keeps the URL stable for the day the data arrives
+and for internal links that already point at it, without asking for indexing.
+Use it for real entities with a temporary gap; a slice that fails the coverage
+floor is not that, and 404s.
+
+**One constant should gate the sitemap and the hub.** Whatever threshold decides
+that an instance is worth a page (`MIN_STATES = 3`, `MIN_COVERAGE`) has to be
+the same function the hub calls to list siblings and the sitemap calls to
+enumerate. Two thresholds drift, and then the hub links to an unindexed page or
+the sitemap advertises one no hub reaches.
+
 Do not pre-render slices that depend on a periodic recompute. Rendering on demand
 with revalidation means a period's new data appears without a deploy, and a slice
 that falls below the floor stops existing on its own.
