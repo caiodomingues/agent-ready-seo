@@ -33,7 +33,7 @@
     },
     {
       "id": 3,
-      "prompt": "We collect prices for about 40 grocery items across 27 regions every month. I want AI models to cite us. What should we publish, and what should we keep behind the paywall?",
+      "prompt": "We collect prices for about 40 grocery items across two dozen regions every month. I want AI models to cite us. What should we publish, and what should we keep behind the paywall?",
       "expected_output": "Should read references/citable-data.md. Should propose a small, fixed, dated aggregate published on a schedule: a basket that does not change, one figure per period per region, median not mean, distinct-entity counting, a minimum sample per cell, sanity bounds per item, a coverage floor below which a regional page 404s, idempotent recompute with diff-before-write and dry-run. Should insist on a public methodology page with limitations and a how-to-cite block. Should draw the free/paid line as aggregate vs individual record, dated snapshot vs live, and put an explicit bridge on the public page. Should propose Dataset JSON-LD with description, creator by @id and license, a per-period written analysis, sample and date disclosure on every aggregate, and IndexNow after each publication.",
       "assertions": [
         "Fixed basket with a version-bump rule for changes",
@@ -49,8 +49,8 @@
     },
     {
       "id": 4,
-      "prompt": "I want to generate a pricing guide page for every combination of our 20 business segments and all 27 states. That's 540 pages. Good idea?",
-      "expected_output": "Should apply the one test: does each page answer something only we can answer. Should flag segment x region as an intersection axis where coverage collapses quietly, and require a coverage floor per cell with 404 below it, the same constant gating the hub and the sitemap. Should warn that 540 pages in one day looks like mass generation and propose date-gated publication, noting that a build-time sitemap does not see the date pass. Should ask what per-cell data exists and suggest measuring near-duplicate overlap. Should require real inbound links from a hub and siblings, and describe what makes instances genuinely differ (seeded tool, benchmarks, segment-specific mistakes, a dated data block).",
+      "prompt": "I want to generate a pricing guide page for every combination of our 20 business segments and all 30 regions we cover. That's 600 pages. Good idea?",
+      "expected_output": "Should apply the one test: does each page answer something only we can answer. Should flag segment x region as an intersection axis where coverage collapses quietly, and require a coverage floor per cell with 404 below it, the same constant gating the hub and the sitemap. Should warn that 600 pages in one day looks like mass generation and propose date-gated publication, noting that a build-time sitemap does not see the date pass. Should ask what per-cell data exists and suggest measuring near-duplicate overlap. Should require real inbound links from a hub and siblings, and describe what makes instances genuinely differ (seeded tool, benchmarks, segment-specific mistakes, a dated data block).",
       "assertions": [
         "Applies the 'only we can answer' test before the template",
         "Identifies the intersection axis and requires a per-cell coverage floor with 404",

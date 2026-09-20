@@ -205,9 +205,9 @@ pairs of figures live at once, one of them from two years before.
 
 One module owns the pair, and nothing else states it:
 
-- **Export prose variants, not bare numbers.** `"538 thousand"` breaks every
+- **Export prose variants, not bare numbers.** `"412 thousand"` breaks every
   template that appended a noun to it the day the figure becomes
-  `"1.2 million"`; `"538 thousand items"` does not. The consumers that need
+  `"1.3 million"`; `"412 thousand items"` does not. The consumers that need
   a bare number are fewer than the ones that need a sentence.
 - **Export the content date with it,** and let it drive `lastmod` in the
   sitemap, `modifiedTime` in the social block, `dateModified` in the

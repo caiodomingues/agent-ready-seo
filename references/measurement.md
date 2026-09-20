@@ -153,10 +153,10 @@ on impressions and average position, not on sessions.
 
 **Practicalities of the export that bite on the first read:**
 
-- The console's day boundary is Pacific time. A deploy at 22:00 in a
-  UTC-3 market lands on a day that is half before and half after; exclude
-  that day from both windows, or the deploy day contaminates whichever side
-  it is counted on.
+- The console's day boundary is Pacific time. A deploy in the evening of a
+  market several hours ahead of it lands on a day that is half before and
+  half after; exclude that day from both windows, or the deploy day
+  contaminates whichever side it is counted on.
 - A domain property mixes hosts. `www`, the bare apex that redirects to it,
   and any subdomain that is a separate site all arrive as rows of the same
   export. Split by host in the report: fold `www` and apex into one page,
