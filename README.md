@@ -22,11 +22,11 @@ references/
   agent-layer.md         the .md twin, llms.txt, canonical stitching, drift
   citable-data.md        fixed baskets, methodology, Dataset markup, free vs paid
   pseo.md                pages at scale, coverage floors, thin content, sharded sitemaps
-  foundations.md         canonical host, sitemap, robots, titles, entities, IndexNow
+  foundations.md         canonical host, sitemap, robots, rendered titles, entities, review cadence
   schema-catalog.md      which structured data type per page type, and the traps
-  measurement.md         first-touch attribution, why AI referrals hide
+  measurement.md         first-touch attribution, why AI referrals hide, title experiments
   pitfalls.md            failure catalog and a full audit checklist
-  verification.md        production checks, external scorers, CI wiring
+  verification.md        static CI checks, production checks, external scorers
 templates/
   next/                  working Next.js App Router implementations
   generic/               the same contract as raw HTTP, plus plain Node
@@ -116,10 +116,12 @@ following this skill completely will not produce a perfect score. See
 ## Provenance
 
 Extracted from shipping three production properties: a content and tooling site
-with roughly 120 indexed pages, a data property with roughly 48,000, and a gated
-SaaS whose only public surface is a landing page and a blog. Every rule here has
-a failure behind it that was hit and fixed, not a best practice copied from a
-list. Examples are anonymized.
+with roughly 400 pages in its sitemap, a data property with roughly 53,000, and
+a gated SaaS whose only public surface is a landing page and a blog. Every rule
+here has a failure behind it that was hit and fixed, not a best practice copied
+from a list. Examples are anonymized, and the counts are re-read from the live
+sitemaps when this file changes, for the reason `references/pitfalls.md` gives
+about claims that age.
 
 ## Contributing
 

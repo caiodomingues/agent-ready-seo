@@ -131,28 +131,52 @@ belongs on the page.
 
 ## Titles and metadata
 
-**Check for doubled site names.** With a template like `%s | Site Name`, any page
-that sets its full title including the suffix produces `Page | Site Name | Site
-Name`. It happens on exactly the pages someone wrote by hand, so it survives
-review and shows up in the tab and the result.
+**Measure the rendered `<title>`, not the string in the code.** A layout
+template (`%s | Site Name`) appends a suffix, a page helper appends a year, and
+the string someone reviewed at 48 characters ships at 72. On one property every
+programmatic page rendered between 58 and 91 characters while every raw title
+sat under 55; the desktop result cut all of them, and the cut landed on the
+year or on the site name. Any test, any audit and any experiment reads the
+final tag, from a crawl of production, and the code has one function that
+produces exactly that tag.
 
-Audit with a crawl, not by reading code:
+**The suffix is a budget decision, per page family.** Sixteen or so characters
+of site name on a sixty-character line is a quarter of the title. On the home
+page and institutional pages it earns its place; on a guide, a tool or an
+article it displaces the words that describe the page. Decide per family, write
+the decision down as a policy table the tests read, and escape the layout
+template on the families that drop it (in Next.js, `title: { absolute }`).
+Pages that keep it must never include it in their own string as well, or the
+name appears twice; that bug hits exactly the pages someone wrote by hand.
 
-```sh
-grep -rn "title:" src/app --include=page.tsx | grep -i "site name"
-```
+**A year token only when it still fits.** Appending `(2026)` is a cheap
+freshness signal on periodic content, and a seven-character surprise on a
+title that was already at the limit. Add it conditionally: only when the title
+carries no year, and only when the result stays within the budget.
+
+**Ratchet the limits instead of fixing every page at once.** A test that
+enumerates every page's rendered title and description, fails anything new
+over the limit, and carries a named list of the legacy pages that were over it
+when the test was written, with their measured lengths. The list can only
+shrink: an entry that gets fixed must be deleted, an entry whose length
+changes must be updated, and a path that leaves the site must be removed. Add
+a second assertion that no two paths share a title, which is the cheapest
+duplicate-content check that exists. Worked implementation:
+`templates/next/seo-metadata.ts`.
+
+**One module feeds every surface that repeats the title.** The HTML head, the
+Open Graph block, the markdown twin's front matter, the sitemap and the
+JSON-LD `headline` all restate the same string, and on one property they were
+typed in three places: literals in page files, fields on the content object,
+and a second copy inside the markdown exporter. The HTML and the twin drifted
+on exactly the pages that had been hand-tuned. Put title, description,
+canonical path and social image in a pure module (no database, no filesystem,
+so the sitemap and the tests can import it) and have every surface call it.
 
 **Descriptions are not a ranking factor and are still worth writing,** because
 they influence clicks and because answer engines quote them when nothing better
 is available. Write one per page type. Generated descriptions that stuff the same
 sentence with a substituted variable are worse than none.
-
-**Include a year token where content is periodic.** Generated at render time, so
-it stays current without a content edit:
-
-```ts
-title: `${label} pricing guide (${new Date().getFullYear()})`
-```
 
 **Tell the engine the site name explicitly.** Google picks the name shown next to
 a result from `og:site_name` and `WebSite.name`. Without them it derives one from
@@ -217,6 +241,18 @@ moment anyone checks.
 through an LLM tool rather than a CMS, nothing forces publication to happen.
 Put the rhythm somewhere visible (a schedule on the content object, a recurring
 task) and treat a quiet month as a defect, the same way a stalled index is.
+
+**And it needs a re-read when the code under it moves.** An article that
+explains a pricing formula, quotes a plan limit or cites the dataset figure is
+correct on the day it is written and silently wrong the day the module
+changes, because nothing in the build knows the two are related. Make the
+relation explicit: each editorial entry declares the source files its claims
+depend on, a manifest records a hash of the content and of each dependency
+with the review date, and CI fails when either moved without a recorded
+review. Give each entry a review period too (dated analyses shorter than
+evergreen guides), so a quiet quarter also fails. Recording a review takes an
+explicit date, never "now", because the date is itself a claim. Worked
+implementation: `templates/generic/content-review.js`.
 
 ---
 

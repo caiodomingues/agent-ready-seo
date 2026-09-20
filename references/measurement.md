@@ -71,6 +71,20 @@ Verify this against a production build, not the dev server:
 curl -sI https://example.com/ | grep -i set-cookie   # expect nothing
 ```
 
+Then check that the pages were cacheable to begin with. On one property the
+cookie discipline was correct and irrelevant: the marketing layout called the
+session helper to decide what the navbar shows, the helper read cookies, and
+every public page rendered per request with `Cache-Control: private, no-store`
+and a CDN miss on every family. A session check in a shared layout makes the
+whole marketing surface uncacheable, and no amount of care about `Set-Cookie`
+gets it back. Read `cache-control` and the CDN's hit header from outside; if
+they say private, move the session-dependent part into a client island or a
+streamed slot so the shell can be cached.
+
+```sh
+curl -sI https://example.com/guides/example | grep -iE "cache-control|x-vercel-cache|cf-cache-status"
+```
+
 **2. Return null when there is no signal. Never invent "direct".**
 
 This is the highest-leverage detail on this page.
@@ -136,6 +150,80 @@ verification onward. Beyond checking positions, the two views that matter:
 
 Impressions before clicks is the normal, healthy sequence. Judge the first months
 on impressions and average position, not on sessions.
+
+**Practicalities of the export that bite on the first read:**
+
+- The console's day boundary is Pacific time. A deploy at 22:00 in a
+  UTC-3 market lands on a day that is half before and half after; exclude
+  that day from both windows, or the deploy day contaminates whichever side
+  it is counted on.
+- A domain property mixes hosts. `www`, the bare apex that redirects to it,
+  and any subdomain that is a separate site all arrive as rows of the same
+  export. Split by host in the report: fold `www` and apex into one page,
+  and keep the subdomain apart, or its pages land in "other" and inflate the
+  denominator.
+- The page export caps at a thousand rows. On a site with a few hundred
+  generated pages, the tail is missing from the export, and a family that
+  lives in the tail is under-counted. Export with a URL filter per family
+  when the total exceeds the cap.
+- The export does not carry its own period. Put the date range in the file
+  name, and keep every export: the next read needs the previous one.
+- The number format follows the console's locale (`1,2%` and `5,8` in one
+  language, `1.2%` and `5.8` in another, sometimes both in one account).
+  Parse both.
+
+---
+
+## Experiments on titles, descriptions and templates
+
+A change to what the result shows (title, description) or to what the page
+does (a tool above the fold, a gate removed) is an experiment, whether or not
+it is called one. Treat it as one, or the read in a month will be an argument.
+
+**The register.** One row per change that can move impressions, clicks or
+position: deploy date and commit, the pages affected, the control, the
+hypothesis in one sentence, the target metric, and the read date. It lives in
+the repository next to the exports, not in a chat thread. Reverting a row must
+be as small as the row: for a title experiment, an override map keyed by
+canonical path with the variant, the experiment id and the start date, where
+deleting the entry restores the original that still lives on the content
+object. See `templates/next/seo-metadata.ts`.
+
+**Arms as a module every surface reads.** Segment pages under test and their
+controls are decided in one pure function, and the sitemap, `llms.txt`, the
+twin routes and the pages themselves ask it rather than deciding on their own.
+Otherwise the cohort's tool appears in the sitemap for a control page, or a
+control page's twin advertises the treatment. Segments scheduled to publish
+inside the window get their own arm, decided before they go live; see the
+publication note in `references/pseo.md`.
+
+**Baseline before the deploy, not after.** Two numbers, taken the day before:
+the console export for the families under test (the day the change ships is
+already contaminated), and conversions per click by landing path, from the
+first-touch data described above, for the same window. A treatment that lifts
+click-through and drops signups per click has moved the wrong people; without
+the second number that reads as a win.
+
+**The read.** Twenty-eight days after the deploy, the same export with the
+new window, compared to the baseline by family and by arm, position weighted
+by impressions. Report click-through per family, position per family (a title
+that lifts clicks by dropping position has bought them), and conversions per
+click. Then decide: extend the treatment to the control, or revert the rows.
+
+**What one such read taught.** On a content and tooling property, guide pages
+sat at roughly one percent click-through at an average position near six, and
+the tool pages of the same segments at three to six percent at the same
+position. The hypothesis that fit: informational queries are increasingly
+answered on the results page itself, and the click that survives is for a page
+that will *do* the thing. The treatment was a tool-shaped title ("How much to
+charge for X? Free calculator") on a page that then did the calculation
+without a login, with the gate moved to saving and exporting. Two cautions
+came with it. The title has to describe what the page delivers to an
+anonymous visitor: the production inventory found that the existing tool
+blurred the very figure the new title promised, which would have been a
+broken promise measured as a bounce. And the untouched guides are the
+control; extending the treatment to them before the read leaves nothing to
+compare against.
 
 ---
 

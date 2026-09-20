@@ -152,6 +152,28 @@ Two specific rules:
   ship real `Review` objects with named authors and no aggregate, and accept
   having no stars.
 
+### Product built from observations
+
+An entity page on a price index renders `Product` with `name`, `description`,
+`image`, `sku` and an `offers` block carrying the observed figure, currency
+and the date it was observed. Two properties stay out, and the reason is
+different from the legal one below: `availability` and `priceValidUntil`
+describe a seller's current promise, and the page holds a historical
+observation. It saw a price on a date; it did not see stock, and it cannot
+promise a validity window. Declaring either turns a measurement into a
+listing, and a wrong listing is what a shopping surface penalizes.
+
+### The analysis post and its dataset
+
+The written analysis that accompanies each period (see
+`references/citable-data.md`, publishing as a routine) is a `BlogPosting`,
+and the data it analyzes is declared as a `Dataset` nested under its `about`,
+not as a second root node. The root `Dataset` lives on the index pages; the
+post is *about* that dataset for one period. Give the post distinct
+`datePublished` and `dateModified`, and keep them honest: a periodic re-read
+that changed nothing does not move `dateModified`, and a correction that did
+moves it and is explained in the text.
+
 ### What to leave out under a legal constraint
 
 Structured data is a second, machine-readable copy of the page, so anything the

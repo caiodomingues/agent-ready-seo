@@ -1,11 +1,59 @@
 # Verification
 
-How to check the work, in three loops: your own assertions against production, an
-external scorer, and the slow signals that only appear over months.
+How to check the work, in four loops: static checks that run in CI before
+anything deploys, your own assertions against production, an external scorer,
+and the slow signals that only appear over months.
 
 The rule underneath all of it: **verify against the deployed site, not against the
 code**. Most findings live in the gap between what the repository says and what
-is served.
+is served. Loop 0 exists because a few of those gaps are cheaper to close before
+the deploy than to discover after it.
+
+---
+
+## Loop 0: static checks in CI
+
+These run on every push, take seconds, and each one was written after the
+failure it catches had shipped. None of them replaces Loop 1; they stop the
+regressions that Loop 1 would only find on the next manual pass.
+
+**Twin parity.** For every editorial page: the page file, the markdown source
+and the registry entry exist together (one missing means a 404 twin, a
+sitemap entry for nothing, or an orphan file). The first line of the markdown
+is `# ` plus the title the metadata declares. Every section the page renders
+(lead, body, FAQ) is non-empty in the source, and the number of questions in
+the source equals the number the FAQ block renders, because a question lost in
+parsing is a JSON-LD block that no longer matches the page.
+
+**Every registered twin has a handler.** Walk the twin registry and assert the
+route file exists for each `api` path. A registry entry without a handler is a
+rewrite to a 404, live, announced in `llms.txt`.
+
+**Stale-claim sweep.** A short list of regular expressions for figures that
+have been retired (an old price, an old dataset count, an old plan limit),
+run across content, pages and generated copy. It fails the build when one
+comes back. On one property the sweep was added after the same retired count
+resurfaced twice from copy-paste; it has caught a third since.
+
+**Rendered metadata within budget.** The ratchet test in
+`templates/next/seo-metadata.ts`: every page's rendered title and description
+against the limit, a legacy list that can only shrink, no two paths sharing a
+title.
+
+**Editorial review manifest.** Content whose facts depend on code (a pricing
+formula, plan limits, the dataset figures) is fingerprinted together with the
+files it depends on; the check fails when either changed without a recorded
+review, and warns when a periodic review is overdue. See
+`templates/generic/content-review.js` and `references/foundations.md`.
+
+**Forbidden identifiers in the build output,** where a legal constraint hides
+something (retailer names on a pseudonymized index): scan everything under the
+public output directory for the identifiers, with the context of each hit
+checked, since common words collide. See `references/schema-catalog.md`.
+
+Wire them as separate scripts (`check:md`, `check:content`, `check:seo`) so a
+failure names the discipline that broke, and run them before the build step,
+not after: a build is the expensive part.
 
 ---
 
@@ -45,13 +93,41 @@ curl -s  $SITE/robots.txt
 curl -sI $SITE/api/og?title=test | head -1                 # expect 200
 curl -sI -A "ChatGPT-User" $SITE/ | head -1                # edge rules can block by UA
 
-# Caching survives attribution
+# Caching survives attribution, and existed in the first place
 curl -sI $SITE/ | grep -i set-cookie                       # expect nothing
+curl -sI $SITE/guides/onboarding | grep -iE "cache-control|x-vercel-cache|cf-cache-status"
+                                                           # public + HIT, not private/no-store
 ```
 
 Two checks worth automating because they regress silently: the advertised-twin
 loop above, and the sitemap count against the number of published entries in the
 content registry. Both fail quietly and stay broken for months.
+
+### The inventory crawl
+
+Before any change to titles, templates or page families, and again on the day
+an experiment is read, take an inventory of production with a script rather
+than by hand, so the two snapshots were taken the same way. One representative
+URL per family plus every instance of the families under test. For each:
+
+| Field | Why |
+| --- | --- |
+| status and `location` | A family that quietly redirects is not the family you think you are measuring |
+| `<title>`, description, canonical, robots meta | The rendered values, which is what the engine reads |
+| H1 and the H2 list | Whether the outline matches the title's promise |
+| JSON-LD types present | Which pages declare nothing |
+| A marker for the tool | Some string only the interactive component renders, so the crawl knows the page *has* the tool, not just a link to one |
+| text overlap between twin pages | Sentences of forty-plus characters shared by two pages that target the same segment |
+| `cache-control` and the CDN hit header | Whether the page is cacheable at all |
+
+Keep it in plain Node with no imports from the application, because it runs
+against production, and version the JSON output next to the experiment
+register. On one property the first inventory found, in an afternoon, five
+things the code review had not: every rendered title over the limit, no public
+page cacheable, two routes rendering the same rows, a tool page whose headline
+promised a figure the component blurred behind a login, and a redirect status
+the internal docs had wrong. Each one changed the plan before the first
+experiment shipped.
 
 ---
 

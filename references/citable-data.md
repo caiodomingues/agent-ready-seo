@@ -101,6 +101,35 @@ Then a re-run after a data fix is safe, and a dry-run mode gives you the diff as
 report before anything is written. Incremental-only pipelines accumulate errors
 you cannot correct without a manual migration.
 
+### What the page says about its own sample
+
+A figure is citable to the extent a reader can tell what it is made of. Next
+to every aggregate, from the same rows the aggregate was computed from:
+
+- **How many observations, from how many distinct sources, in how many
+  places.** Three different counts, and they are conflated constantly. One
+  chain in five cities is five observations and one source; a source
+  pseudonymized per region ("Source 3") has to be counted as
+  `(region, id)`, because the numbering restarts in every region and a naive
+  distinct count merges them. Write the counting rule down and test it with
+  four rows.
+- **First and last observation date,** from those rows. When they differ,
+  say "collected between A and B"; when a row has no date, say "date not
+  recorded" rather than filling in a plausible one. A fabricated date is a
+  fabricated claim in the one place a reader checks.
+- **Absolute dates on anything statically rendered.** "Updated 3 days ago"
+  is computed at build time and is a lie by the time the HTML is served a
+  week later. The build date is not the observation date, and a static page
+  served late must not turn an old observation into today's price.
+- **Nothing in the structured data that the observations cannot support.**
+  A `Product` block built from historical price observations does not
+  declare `availability` or `priceValidUntil`: the page observed a price on a
+  date, it did not observe stock, and it cannot promise a validity window.
+  See `references/schema-catalog.md`.
+
+Each of these came from a page that had to be corrected after it was live,
+not from a checklist.
+
 ---
 
 ## The methodology page
@@ -125,6 +154,72 @@ preempts the criticism that would otherwise be the first search result about you
 A methodology page is one of the few pages worth keeping **without** a markdown
 twin, if it is hand-written and detailed: two renderings of a precise document is
 exactly where drift hurts most.
+
+---
+
+## Publish the workings, not just the number
+
+The index is the headline. The thing that gets linked is the analysis behind
+it: one dated question the data can answer ("which items moved the cost of a
+standard batch between June and July"), with every step open. This is a
+bulletin, and it is the most citable unit a data property produces, because a
+model can quote a method and a reader can re-run it. The shape that held up:
+
+- **A read-only exporter** that pulls the reference rows for named periods
+  and refuses to run when a period is incomplete, when rows are duplicated,
+  or when coverage is below the sample floor. It writes to a new file in a
+  directory per edition and never overwrites a previous edition, because
+  the earlier bulletin cites the earlier file.
+- **Three published artifacts per edition:** the observed references (with
+  source, collection date, price definition, unit and the meaning of the
+  sample count stated inside the file), the calculation memory (every
+  intermediate figure, so the rounding in the prose can be checked), and a
+  printable or downloadable version of the worked case.
+- **Observed and assumed, marked apart.** Prices were collected; quantities,
+  yields, labor and fees in a worked example are hypotheses. Say which is
+  which at the top, in the tables and in the downloads. If a yield was not
+  measured, the cost per unit is a simulation, and the page says so.
+- **No causes without evidence.** The data shows an item moved; it does not
+  show weather, harvest or a supplier's behavior. Leave the cause out unless
+  another source supports it.
+- **Corrections are dated and explained,** and a correction is not a new
+  collection. Re-dating a page to look fresh, when the observations are the
+  old ones, is the one thing that would make every earlier citation
+  worthless.
+
+A generator that produces the calculation memory and the printable version
+from the versioned source file, with no database and no network, is what
+makes "reproducible" a property of the build rather than a promise in the
+text. Keep that generator with the edition it produced; the next edition gets
+its own.
+
+---
+
+## Claims about the data, as one constant
+
+The size of the corpus ("N items, M observations, K regions") is quoted on
+the home page, the about page, every comparison page, the `llms.txt`, the
+generated descriptions and the assistant's system prompt. It ages while the
+data grows, and a sweep after the fact on one property found three different
+pairs of figures live at once, one of them from two years before.
+
+One module owns the pair, and nothing else states it:
+
+- **Export prose variants, not bare numbers.** `"538 thousand"` breaks every
+  template that appended a noun to it the day the figure becomes
+  `"1.2 million"`; `"538 thousand items"` does not. The consumers that need
+  a bare number are fewer than the ones that need a sentence.
+- **Export the content date with it,** and let it drive `lastmod` in the
+  sitemap, `modifiedTime` in the social block, `dateModified` in the
+  structured data and `updated:` in the twin's front matter, for every page
+  that quotes the figure. Then a refresh of the claim is a refresh of the
+  date on exactly the pages that changed, and nowhere else.
+- **Name the exception.** A hand-written prose page that states the figure
+  in a sentence is the one place the constant cannot reach; list it next to
+  the constant so the sweep after a change knows where to look.
+- **Retire the old pair with a regex in CI** (see `references/verification.md`,
+  Loop 0). The old figure will be pasted back in from an old draft; the
+  sweep is what catches it the same day.
 
 ---
 

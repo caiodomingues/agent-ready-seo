@@ -158,8 +158,12 @@ export const ACQUISITION_MAX_AGE = 60 * 60 * 24 * 90; // 90 days
  *   curl -sI https://example.com/ | grep -i set-cookie                  # expect nothing
  *   curl -sI -H "Referer: https://chatgpt.com/" https://example.com/ \
  *     | grep -i set-cookie                                              # expect the cookie
- * Run both against a production build. A dev server does not cache, so the
- * regression this protects against is invisible there.
+ *   curl -sI https://example.com/ | grep -iE "cache-control|x-vercel-cache|cf-cache-status"
+ * Run all three against a production build. A dev server does not cache, so
+ * the regression this protects against is invisible there. The third one is
+ * the precondition: if the marketing layout reads the session to render the
+ * navbar, every public page is already `private, no-store` and the cookie
+ * discipline above protects nothing. Fix that first.
  */
 
 /* PORTING

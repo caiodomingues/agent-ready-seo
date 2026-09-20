@@ -1,0 +1,95 @@
+{
+  "skill_name": "agent-ready-seo",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "We have a Next.js content site with about 60 guides and a blog. I want LLMs to be able to read our pages cleanly. Add an llms.txt and a markdown version of every page.",
+      "expected_output": "Should read references/agent-layer.md, not every reference. Should propose the twin at the page's own URL plus .md (not a separate endpoint or subdomain), with Content-Type text/markdown, a Link rel=canonical header taken from the document's source_url, X-Robots-Tag: all, and a non-empty markdown 404 body with recovery links. Should keep the twins out of the sitemap and add rel=alternate type=text/markdown per page. Should generate llms.txt from live content with a question-to-URL map and a 'when to use this site' section, and should name the covered sections rather than claiming every page has a twin. Should propose one twin registry that feeds rewrites, negotiation, rel=alternate and llms.txt. Should mention Accept: text/markdown negotiation as a second path and the Next.js limit on Vary for the HTML response. Should end with curl checks against a production build.",
+      "assertions": [
+        "Twin served at URL + .md, not at a separate endpoint",
+        "Canonical Link header derived from the document, home twin canonicals to /",
+        "Twins excluded from the sitemap; rel=alternate added per page",
+        "llms.txt generated from content, with question map and when-to-use section",
+        "llms.txt does not promise twins for page types that lack them",
+        "One registry feeds rewrites, negotiation, rel=alternate and llms.txt",
+        "Mentions Accept negotiation and that Next.js drops Vary on the HTML response",
+        "Verification is against a production build with curl, not the dev server"
+      ],
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "An external agent-readiness scanner says our whole domain is a soft-404. We're a SaaS: marketing pages are public, everything else redirects to /login. What's going on and how do I fix it?",
+      "expected_output": "Should identify the default-deny middleware redirecting every unknown path to a 200 login page as the cause. Should propose keeping default-deny and distinguishing gated areas (redirect to login) from unknown paths (real 404): a shared list of gated prefixes read by both the middleware and robots.txt, a test comparing that list with the route directory in both directions, an HTML 404 via rewrite to an impossible path and a markdown 404 body for non-HTML clients, and never falling through with next(). Should reference templates/next/gated-app-404.ts and give curl checks for an unknown path, a gated path and an API path.",
+      "assertions": [
+        "Names the redirect-to-200-login as the soft-404 cause",
+        "Keeps default-deny while adding an unknown-path branch",
+        "One gated-prefix list shared by middleware and robots.txt, with a directory test",
+        "HTML clients get the framework 404 page with status 404; others get a markdown body",
+        "Never falls through to next() for unknown unauthenticated paths",
+        "Provides curl verification for unknown, gated and API paths"
+      ],
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "We collect prices for about 40 grocery items across 27 regions every month. I want AI models to cite us. What should we publish, and what should we keep behind the paywall?",
+      "expected_output": "Should read references/citable-data.md. Should propose a small, fixed, dated aggregate published on a schedule: a basket that does not change, one figure per period per region, median not mean, distinct-entity counting, a minimum sample per cell, sanity bounds per item, a coverage floor below which a regional page 404s, idempotent recompute with diff-before-write and dry-run. Should insist on a public methodology page with limitations and a how-to-cite block. Should draw the free/paid line as aggregate vs individual record, dated snapshot vs live, and put an explicit bridge on the public page. Should propose Dataset JSON-LD with description, creator by @id and license, a per-period written analysis, sample and date disclosure on every aggregate, and IndexNow after each publication.",
+      "assertions": [
+        "Fixed basket with a version-bump rule for changes",
+        "Median, minimum sample, sanity bounds, coverage floor with 404 below it",
+        "Idempotent recompute with diff-before-write and dry-run",
+        "Methodology page with limitations and a how-to-cite block, not gated",
+        "Free/paid line: aggregates and dated snapshots public, live and per-record gated",
+        "Dataset JSON-LD carries description, creator @id and license",
+        "Each aggregate states observations, distinct sources, places and absolute dates",
+        "Publishing is a recurring routine with a written analysis per period"
+      ],
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "I want to generate a pricing guide page for every combination of our 20 business segments and all 27 states. That's 540 pages. Good idea?",
+      "expected_output": "Should apply the one test: does each page answer something only we can answer. Should flag segment x region as an intersection axis where coverage collapses quietly, and require a coverage floor per cell with 404 below it, the same constant gating the hub and the sitemap. Should warn that 540 pages in one day looks like mass generation and propose date-gated publication, noting that a build-time sitemap does not see the date pass. Should ask what per-cell data exists and suggest measuring near-duplicate overlap. Should require real inbound links from a hub and siblings, and describe what makes instances genuinely differ (seeded tool, benchmarks, segment-specific mistakes, a dated data block).",
+      "assertions": [
+        "Applies the 'only we can answer' test before the template",
+        "Identifies the intersection axis and requires a per-cell coverage floor with 404",
+        "Same threshold gates the route, the hub and the sitemap",
+        "Warns against a one-day spike and proposes date-gated publication",
+        "Notes that a build-time sitemap misses date-gated pages",
+        "Requires hub and sibling links, and names devices that make instances differ"
+      ],
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "Our guide pages get a 0.9% CTR in Search Console at position 6. I want to rewrite the titles on all 18 of them next week to sound like tools. How should I do it?",
+      "expected_output": "Should treat this as an experiment: keep a control group rather than changing all 18, register the change (deploy date, pages, control, hypothesis, metric, read date), take a baseline export and a conversions-per-click baseline before the deploy, and read at 28 days excluding the deploy day. Should insist on measuring the rendered <title> (layout suffix and year included), decide the suffix per family, and put variants in an override map keyed by path so reverting is deleting entries. Should warn that a tool-shaped title must be backed by a page that delivers the result to an anonymous visitor, and should check the production page first. Should note that a segment scheduled to publish mid-window needs its own arm. Should reference templates/next/seo-metadata.ts and references/measurement.md.",
+      "assertions": [
+        "Keeps a control group instead of changing every page",
+        "Registers the experiment with a baseline taken before the deploy",
+        "Measures the rendered title, not the raw string, and decides the suffix per family",
+        "Variants live in an override map keyed by path with experiment id and date",
+        "Checks that the page delivers what a tool-shaped title promises",
+        "Reads at 28 days, excluding the deploy day, by family and arm",
+        "Handles a segment that publishes inside the window as its own arm"
+      ],
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "Audit this site for AEO and GEO problems: https://example.com. It has a blog, a set of calculators, a public price index on a subdomain, and a logged-in app.",
+      "expected_output": "Should read references/pitfalls.md and use its checklist. Should verify against the deployed site with curl rather than against code: canonical host, robots.txt including AI agents and the social image route, unknown-path 404, sitemap count and absence of .md URLs, lastmod honesty, twin headers, llms.txt claims against reality, rendered titles against the limit, cache-control on public pages, structured data against visible claims, the shared organization @id across the subdomain, about and contact pages, first-touch capture and its schema. Should verify each finding before reporting it, distinguishing deliberate deviations from bugs. Should propose the inventory crawl and an external readiness scan, recording failed check IDs.",
+      "assertions": [
+        "Works from the pitfalls checklist, top to bottom",
+        "Verifies against the deployed site, not the repository",
+        "Checks rendered titles, cache-control and unknown-path status, not only robots and sitemap",
+        "Checks the organization @id is shared with the subdomain",
+        "Checks structured data claims against visible claims by reading",
+        "Verifies each finding and distinguishes deliberate deviations from bugs",
+        "Recommends an inventory crawl and an external scan with failed IDs recorded"
+      ],
+      "files": []
+    }
+  ]
+}

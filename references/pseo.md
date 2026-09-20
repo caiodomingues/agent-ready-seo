@@ -59,6 +59,17 @@ The dimension you scale on determines whether the data can carry it.
 | **Entity** (item, product, model) | Each entity has its own record and history | Entities share one generic description |
 | **Comparison** (`/vs/x`, `/alternatives/x`) | You can honestly characterize both sides | You are guessing at the competitor |
 | **Intersection** (segment x region) | Both axes are independently supported and coverage survives the intersection | It is a multiplication trick to inflate page count |
+| **Concept** (one tool per formula: markup, break-even, yield, unit conversion) | Each page hosts a working calculation with its own inputs, defaults and worked example | The "tool" is a paragraph explaining the formula |
+
+The concept axis is worth calling out because it is the one that does not
+cannibalize. A segment tool and a segment guide compete for the same query; a
+break-even calculator answers a query nothing else on the site targets, so it
+enters the index without moving an existing page. The pattern that keeps it
+cheap: the arithmetic in one pure module (so the twin and the tests share it),
+copy and defaults on a content object, the inputs mirrored into the query
+string with `replaceState` so a result is shareable without a reload, and one
+telemetry event per computation so usage is measurable before search traffic
+arrives.
 
 Intersections deserve care. They multiply page count fastest and are where
 coverage collapses quietly: national data may be strong, and a single
@@ -109,6 +120,16 @@ their numbers will move together. That is not automatically disqualifying, since
 the audiences may genuinely search differently, but it must be a decision on
 record with the differentiating content named, not an accident discovered later.
 
+The limit case is two routes that render the same rows. On one property a
+"reference price table" page and the largest region's slice of the index
+page both read the same query with the same filter, so the twelve figures on
+one were the twelve figures on the other, under two titles. Nobody had
+written that; the second route had been migrated onto the index's data as a
+convenience. It was found by the production inventory crawl comparing text
+across pages, not by reading code. The fix is a data decision, not a
+canonical: make the reference page show a genuinely different cut (national
+rather than the top region), or retire it.
+
 ---
 
 ## Making instances genuinely differ
@@ -128,6 +149,15 @@ Concrete devices, cheapest first:
   compile until someone thinks about it.
 - **A dated data block.** Even one table with a period stamp changes the page from
   evergreen filler into a measurement.
+- **The tool inside the article, seeded with the article's own example.** An
+  editorial page that walks through a worked case ("a batch of forty at 1.20
+  each, sold at 3.50") can host the calculator right after the introduction
+  with those numbers preloaded, so the reader checks the text's arithmetic
+  and then replaces it with their own. The article gains the one thing a
+  model cannot summarize away, and the tool gains a page that explains it.
+  Register the embed in one list (which articles carry which tool), because
+  adding one changes what the page claims and should count as an edit for
+  review purposes.
 
 ---
 
@@ -154,6 +184,21 @@ Everything that enumerates pages, the sitemap, hubs, `llms.txt`, internal links,
 must call the same filter. A page live in the sitemap but 404 from the hub, or
 vice versa, is a common and avoidable inconsistency.
 
+Two consequences of date-gated publication that only show up later:
+
+- **A build-time sitemap does not see the date pass.** The route compares the
+  date at request time and starts answering 200 on the day; a sitemap that was
+  generated at build (check the `Age` header on the deployed file) keeps
+  omitting the page until the next deploy, which may be weeks. Either render
+  the sitemap at request time with revalidation, or schedule a deploy for the
+  publication date, and check the deployed count on the day.
+- **A page that lands mid-experiment belongs to no arm.** If titles or
+  templates are being A/B tested by segment, a segment whose date falls inside
+  the measurement window is neither cohort nor control, and it contaminates
+  whichever bucket the report drops it into. Decide its arm in the experiment
+  registry before it goes live (typically a third arm that gets the new
+  treatment and is excluded from the read). See `references/measurement.md`.
+
 ---
 
 ## Internal linking and orphans
@@ -172,6 +217,25 @@ afterward with a crawl rather than from memory.
 
 Reverse links are the ones people forget: if a guide links to a calculator, the
 calculator should link back to the guide.
+
+**Measure the orphan share, do not estimate it.** The number is the fraction
+of sitemap URLs that at least one crawlable page links to. On a data property
+with some forty-four thousand entity pages, the only internal path to them
+was a search route, and the search route was disallowed in `robots.txt`: six
+percent of the sitemap was reachable by a link. Two hub axes fixed most of it,
+a category hub (entities grouped by what they are, with a median per unit and
+a capped table) and a place hub (entities by locality, gated on a floor of at
+least two sources per place), and reachability went to a bit under a fifth in
+one change. Hubs are the cheapest link a large entity corpus can get, and
+they need the same coverage floor as any other generated page.
+
+**Link to the canonical URL, never to a scoped variant.** A table whose rows
+carry `?region=XX` in the `href` hands the crawler thousands of parameterized
+duplicates of pages that self-canonical to the clean path, which is a
+contradiction it resolves by trusting neither. Put the canonical path in the
+`href` and apply the scope on click (a small client component that reads the
+current region and appends it during navigation), so a human keeps their
+context and a crawler sees one URL per entity.
 
 ---
 

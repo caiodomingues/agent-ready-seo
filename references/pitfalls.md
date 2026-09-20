@@ -131,8 +131,66 @@ person instead of the organization.
 **Negotiating a URL that is already the twin.** With both the `.md` suffix and
 `Accept` negotiation live, an agent may send the `.md` URL and the header. A
 matcher whose slug pattern is `[^/]+` captures `x.md` as the slug, resolves a
-twin for the twin, and 404s on a URL that works without the header. Skip
-negotiation for any path that already ends in the suffix, and test that pair.
+twin for the twin, and 404s on a URL that works without the header. Exclude
+the suffix in the middleware matcher so negotiation never sees it, and test
+that pair.
+
+**Titles measured in the code, cut in the result.** A layout template adds
+the site name, a helper adds the year, and a title reviewed at 48 characters
+renders at 72. On one property every programmatic page was over the desktop
+limit and nobody had seen it, because every review read the raw string.
+Measure the rendered tag from a crawl, decide the suffix per family, add the
+year only when it fits, and ratchet the limit in CI. See
+`references/foundations.md`.
+
+**A session check in the shared layout.** The marketing layout calls the
+session helper to decide what the navbar shows, the helper reads cookies, and
+every public page becomes `private, no-store`: no CDN cache, no edge hits,
+per-request rendering of pages that never change. The `Set-Cookie` discipline
+in `references/measurement.md` then protects nothing. Read `cache-control`
+from outside; if it says private on a marketing page, that is the first fix.
+
+**A build-time sitemap and a date-gated page.** The route starts answering
+200 on the publication date; the sitemap, generated at build and served from
+cache for days, does not list it until the next deploy. Check the `Age`
+header on the deployed sitemap, and either render it at request time or
+schedule a deploy for the date.
+
+**Two routes, the same rows.** A convenience migration pointed a reference
+table page at the index's query with the index's filter, and twelve figures
+appeared under two titles. Nobody wrote a duplicate; one was created by
+reuse. The inventory crawl's text-overlap column finds it; reading the code
+does not.
+
+**Metadata typed in three places.** Literals in page files, fields on the
+content object, and a second copy in the markdown exporter. The HTML and its
+twin disagreed on exactly the pages that had been hand-tuned. One pure module
+feeds every surface; see `templates/next/seo-metadata.ts`.
+
+**A tool-shaped title over a page that hides the figure.** The title promises
+"free calculator" and the component blurs the suggested price behind a login.
+The click arrives and leaves. Before a title promises a result, the
+production inventory must confirm the anonymous page delivers it.
+
+**An entity corpus reachable only through search.** Tens of thousands of
+entity pages in the sitemap whose only internal path was a search route, and
+the search route was disallowed. Reachability by internal link was six
+percent. Hubs by category and by place, each with a coverage floor, are the
+fix; the metric is the share of sitemap URLs with at least one inbound link.
+
+**Scoped hrefs in tables.** Every row linking to `?region=XX` variants of
+pages that self-canonical to the clean path. Put the canonical path in the
+`href` and apply the scope on click.
+
+**Relative dates on static pages.** "Updated 3 days ago" is computed at build
+and served for a week. Absolute observation dates, always; the build date is
+never the data date.
+
+**An article whose code moved under it.** The pricing module changed, the plan
+limits changed, the dataset figure changed, and the articles explaining them
+did not, because nothing in the build knew they were related. Fingerprint
+content together with its declared dependencies and fail CI when either
+changed without a recorded review. See `templates/generic/content-review.js`.
 
 ---
 
@@ -153,6 +211,10 @@ the code, because the gap between them is the point.
 - [ ] `lastmod` absent unless a real content date backs it
 - [ ] Every generated route type appears in the sitemap, including ones added late
 - [ ] No URL in the sitemap 404s, redirects, or is canonicalized elsewhere
+- [ ] Public pages are cacheable (`cache-control` public, CDN hit), so no
+      shared layout is reading the session
+- [ ] Date-gated pages: the sitemap renders at request time, or a deploy is
+      scheduled for each publication date
 
 ### Duplication
 
@@ -163,6 +225,8 @@ the code, because the gap between them is the point.
 - [ ] Alternate renderings stay out of the sitemap
 - [ ] No self-comparison or self-alternative page exists
 - [ ] Hubs covering the same set are consolidated, with the retired one redirected
+- [ ] No two routes render the same rows under different titles
+- [ ] Internal `href`s carry the canonical path, never a scoped query variant
 
 ### Content quality
 
@@ -172,6 +236,10 @@ the code, because the gap between them is the point.
 - [ ] Each generated page has real inbound links from a hub, siblings and editorial
 - [ ] Reverse links exist where a pair references each other
 - [ ] No page exists solely to say data is unavailable
+- [ ] Share of sitemap URLs with an inbound internal link is measured, and
+      entity corpora have hubs with coverage floors
+- [ ] Editorial entries are fingerprinted with their code dependencies, and the
+      review manifest is current
 
 ### Structured data
 
@@ -188,6 +256,10 @@ the code, because the gap between them is the point.
 - [ ] `SearchAction` only if the parameter genuinely works
 - [ ] `Dataset` blocks carry description, creator and license
 - [ ] Breadcrumbs on every page deeper than one level, matching the real hierarchy
+- [ ] `Product` built from observations declares no `availability` or
+      `priceValidUntil`
+- [ ] Every aggregate states observations, distinct sources and places as three
+      counts, with absolute first/last dates from the same rows
 
 ### Agent layer
 
@@ -212,7 +284,10 @@ the code, because the gap between them is the point.
 
 - [ ] No doubled site name anywhere
 - [ ] Every page type has a distinct description pattern
-- [ ] Periodic content carries a year token generated at render time
+- [ ] Periodic content carries a year token generated at render time, only where it still fits
+- [ ] Rendered `<title>` is measured from a crawl; the suffix policy per family
+      is on record; the length ratchet runs in CI
+- [ ] A tool-shaped title describes what an anonymous visitor actually gets
 
 ### Measurement
 
@@ -223,11 +298,16 @@ the code, because the gap between them is the point.
 - [ ] Clean arrivals set no cookie, so caching still applies
 - [ ] An external agent-readiness scan has been run, and its failed check IDs
       recorded rather than just the score (see `verification.md`)
+- [ ] Every title or template change has a row in the experiment register, a
+      baseline taken before the deploy, and arms decided in one module
+- [ ] Console reads exclude the deploy day and split hosts
 
 ### Claims
 
 - [ ] Every quantitative claim about the product or data re-verified this quarter
 - [ ] The same figures used across all surfaces, including generated copy
+- [ ] The figures live in one constant with prose variants and a content date;
+      the retired pair is swept by regex in CI
 
 ---
 

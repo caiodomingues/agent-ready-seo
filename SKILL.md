@@ -2,7 +2,7 @@
 name: agent-ready-seo
 description: Use when a site needs to be readable and citable by AI answer engines as well as search crawlers. Covers the markdown twin layer, llms.txt, structured data, programmatic pages backed by real data, publishing a citable dataset, and attributing AI referrals. Also use when the user mentions "AEO", "GEO", "answer engine optimization", "generative engine optimization", "llms.txt", "llms-full.txt", "markdown version of my pages", "get cited by ChatGPT", "AI search traffic", "AI crawlers", "JSON-LD", "structured data", "Dataset schema", "programmatic SEO", "thin content", "doorway pages", "sitemap", "canonical", "IndexNow", or "where is my AI traffic coming from". For persuasion and page copy see copywriting; for classic on-page issue hunting see seo-audit.
 metadata:
-  version: 1.1.0
+  version: 1.2.0
 license: MIT
 ---
 
@@ -42,6 +42,8 @@ Read the reference for the layer in play. Do not read all of them.
 | Fix the technical base: sitemap, robots, canonical, titles, IndexNow, social images | `references/foundations.md` | `templates/next/sitemap.ts`, `robots.ts` |
 | Decide which structured data type a page needs | `references/schema-catalog.md` | `templates/next/dataset-jsonld.ts` |
 | Know whether any of it worked, and where AI traffic lands | `references/measurement.md` | `templates/next/first-touch.ts` |
+| Change titles or templates as an experiment, without touching URLs | `references/measurement.md` (experiments), `references/foundations.md` (titles) | `templates/next/seo-metadata.ts` |
+| Keep articles correct after the code they explain changes | `references/foundations.md` (entities and authorship) | `templates/generic/content-review.js` |
 | Audit an existing site, or review a plan before building | `references/pitfalls.md` | none |
 | Check that any of it actually works, in production or in CI | `references/verification.md` | none |
 
@@ -66,7 +68,12 @@ backwards: writing a hundred pages before having anything different to say.
    data. Cheap, fast, and what stops the rest of the effort from leaking.
 4. **Ship the free tool before the content.** A no-login calculator or checker
    answers practical-intent queries better than any article, and it is what earns
-   unsolicited links.
+   unsolicited links. It is also what still gets the click: on one property the
+   guides sat near one percent click-through and the tools of the same segments
+   at three to six, at the same position, because the informational query is
+   increasingly answered on the results page and the click that survives is for
+   a page that does the thing. The tool must deliver to an anonymous visitor
+   what its title promises; gate saving and exporting, not the result.
 5. **Only then scale pages per segment,** with real data per page. If a page does
    not answer something only you can answer, it should not exist.
 6. **Add the agent layer.** Text version, `llms.txt`, canonical stitching the two.
@@ -74,7 +81,9 @@ backwards: writing a hundred pages before having anything different to say.
 7. **Instrument before expecting results.** First-touch attribution and search
    console configured before traffic arrives, or the first months are lost data.
    Verify the layer against production, and consider an external scorer as a
-   second opinion. See `references/verification.md`.
+   second opinion. See `references/verification.md`. Any later change to
+   titles or templates is an experiment with a register, a control and a
+   baseline taken before the deploy; see `references/measurement.md`.
 8. **Treat the data as a recurring publication.** An index that stops updating
    stops being citable within two months. The routine is part of the asset.
 

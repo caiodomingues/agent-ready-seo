@@ -22,8 +22,9 @@ hundred lines of routing and headers, not a platform feature.
 | --- | --- |
 | `next/markdown-response.ts` | The shared HTTP wrapper for every `.md` twin, plus front matter |
 | `next/md-route.ts` | A twin route, in both the generated and file-backed shapes |
-| `next/rewrites.ts` | Mapping `/{path}.md` to handlers, including the ordering trap |
-| `next/page-metadata.ts` | Canonical, `rel=alternate`, social image, title without doubling |
+| `next/rewrites.ts` | The twin registry, and the rewrites, negotiation and `rel=alternate` that read it |
+| `next/page-metadata.ts` | A page consuming the metadata module: canonical, alternate, social image |
+| `next/seo-metadata.ts` | One source for title, description and OG; per-family suffix policy; experiment overrides; the length ratchet test |
 | `next/sitemap.ts` | Sitemap generated from the content registry, with honest `lastmod` |
 | `next/sitemap-sharded.ts` | Index plus shards, for corpora past the 50k cap |
 | `next/robots.ts` | Crawl rules with AI agents explicitly allowed |
@@ -33,12 +34,13 @@ hundred lines of routing and headers, not a platform feature.
 | `next/first-touch.ts` | Attribution that survives AI referrals without breaking caching |
 | `generic/contract.http` | Every endpoint as request and expected response |
 | `generic/express-md-route.js` | The agent layer in plain Node |
+| `generic/content-review.js` | Editorial content fingerprinted with its code dependencies, checked in CI |
 
 ## Adapting
 
 - Replace `SITE_URL` with the canonical host, including the `www` decision.
 - Replace the example content sources (`getGuide`, `getPublishedPosts`,
-  `comparableCompetitors`) with the project's real ones. Never ship a template's
+  `comparableCompetitors`, `editorialEntries`) with the project's real ones. Never ship a template's
   placeholder data.
 - Keep comments that explain a constraint. Drop comments that narrate the
   template. The test: would the next reader rediscover this the hard way?

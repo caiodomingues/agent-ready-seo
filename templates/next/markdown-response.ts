@@ -139,10 +139,14 @@ export function acceptsNothingWeServe(acceptHeader: string | null): boolean {
 }
 
 /*
- * In middleware (or proxy.ts, depending on the Next.js version), applied ONLY to
- * content routes so the cache split stays bounded:
+ * In middleware (or proxy.ts, depending on the Next.js version). The matcher
+ * must exclude `.md` and the other static extensions, so a request that
+ * already carries the suffix is never renegotiated into a twin of the twin.
  *
  *   export function middleware(req: NextRequest) {
+ *     const twin = mdTwinFor(req.nextUrl.pathname);   // registry in rewrites.ts
+ *     if (!twin) return NextResponse.next();
+ *
  *     const accept = req.headers.get("accept");
  *
  *     if (acceptsNothingWeServe(accept)) {
@@ -152,28 +156,36 @@ export function acceptsNothingWeServe(acceptHeader: string | null): boolean {
  *       });
  *     }
  *
- *     if (prefersMarkdown(accept) && hasTwin(req.nextUrl.pathname)) {
- *       const res = NextResponse.rewrite(new URL(`${req.nextUrl.pathname}.md`, req.url));
+ *     if (prefersMarkdown(accept)) {
+ *       const res = NextResponse.rewrite(new URL(twin, req.url));
  *       res.headers.set("Vary", "Accept");
  *       return res;
  *     }
  *
- *     // Every HTML response on a route that CAN negotiate must also vary, or the
- *     // CDN hands the cached HTML to an agent that asked for markdown.
- *     const res = NextResponse.next();
- *     if (hasTwin(req.nextUrl.pathname)) res.headers.set("Vary", "Accept");
- *     return res;
+ *     return NextResponse.next();
  *   }
  *
- * `hasTwin` must be the same list the rewrites use. A route that negotiates but
- * has no twin returns 404 for a page that renders fine in a browser, which is the
- * worst possible outcome of adding this.
+ *   export const config = {
+ *     matcher: ["/((?!api/|_next/|.*\\.(?:md|txt|xml|json|svg|png|jpg|webp|ico|css|js|map|woff2?)$).*)"],
+ *   };
  *
- * Frameworks often set their own Vary for internal routing (Next.js sets rsc and
- * router-state values). That does NOT cover Accept. Check the wire:
+ * The HTML response goes out WITHOUT `Vary: Accept`, and that is not an
+ * oversight. Next.js rebuilds the Vary of a page response for its own routing
+ * (rsc, router-state) and drops the value set here, by a rewrite, or by
+ * `headers()` in the config; all three were tried against a production build.
+ * It is safe because the variant is chosen here, before any cache lookup, and
+ * each variant lives at its own path: a client that prefers markdown is
+ * rewritten to `/x.md` and never reads the cache entry for `/x`. The markdown
+ * variant is the one that must carry Vary, and does.
+ *
+ * `mdTwinFor` must read the same registry the rewrites use. A route that
+ * negotiates but has no twin returns 404 for a page that renders fine in a
+ * browser, which is the worst possible outcome of adding this.
  *
  *   curl -sI -H "Accept: text/markdown" https://example.com/guides/onboarding \
- *     | grep -iE "content-type|vary"
+ *     | grep -iE "^HTTP|content-type|vary"          # 200, text/markdown, Vary: Accept
+ *   curl -sI -H "Accept: text/markdown" https://example.com/guides/onboarding.md \
+ *     | grep -iE "^HTTP"                            # 200, not renegotiated
  */
 
 /* PORTING

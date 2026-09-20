@@ -167,19 +167,45 @@ variants you intended. Two mitigations: apply the negotiation and the `Vary` onl
 on content routes, or normalize the header to a single flag at the edge and vary
 on that instead.
 
-Omitting `Vary: Accept` while negotiating is the worst of the three options. A
-CDN then serves whichever variant landed in the cache first: HTML to an agent
-asking for markdown, or markdown to a browser. A framework that already sets its
-own `Vary` for internal routing does not cover this; check what is actually on
-the wire rather than assuming the framework handles it.
+**What `Vary` actually protects.** The header matters when one cache key can
+hold either variant: a CDN that caches `/guides/onboarding` and then serves
+that entry to an agent asking for markdown, or hands cached markdown to a
+browser. It stops mattering when the variant is chosen at the edge, before any
+cache lookup, and each variant lives at its own path: an agent that prefers
+markdown is rewritten to `/guides/onboarding.md` and never reads the HTML
+cache entry. Under that design the markdown response must carry `Vary: Accept`
+(it is what a scanner checks) and the HTML response carrying it is
+belt-and-braces.
+
+**Some frameworks will not let you set it on the HTML response.** Next.js
+rebuilds the `Vary` of a page response for its own routing (`rsc`,
+`router-state`) and discards the value set by the middleware, by a rewrite, and
+by `headers()` in the config. All three were tried against a production build,
+and none reached the wire. Do not spend a day on it: rely on the design above
+(the edge selects the variant), keep `Vary: Accept` on the markdown variant,
+and write down that the HTML side is a known framework limit, so the next
+audit does not reopen it. Check what is actually on the wire rather than what
+the code sets.
 
 **Do not negotiate a URL that already carries the suffix.** Once both paths are
 live and `llms.txt` documents both, a compliant agent may send the `.md` URL
 *and* `Accept: text/markdown`. A page matcher whose slug is `[^/]+` captures
 `x.md` as the slug and resolves a twin for the twin, so the request 404s on a URL
-that works fine without the header. Return "no twin" for any path ending in the
-suffix before matching, and test that exact pair. Negotiate `GET` and `HEAD`
-both; a probe that only sends `HEAD` is otherwise told the feature is absent.
+that works fine without the header. The cleanest fix is to keep the suffix out
+of the middleware entirely: exclude `.md` (and every other static extension)
+in the matcher, so negotiation only ever sees page URLs. Test that exact pair.
+Negotiate `GET` and `HEAD` both; a probe that only sends `HEAD` is otherwise
+told the feature is absent.
+
+**One registry for every surface that needs to know a twin exists.** The
+rewrites, the negotiation branch, the `rel=alternate` in page metadata, the
+`llms.txt` claim and the check that every route has a handler all have to
+agree, and they only agree when they read one list. A route that negotiates
+without a twin turns a page that opens fine in a browser into a 404 for an
+agent, which is the worst outcome of adding negotiation. The registry also
+needs a short exception list for literal paths a parameter pattern would
+capture (`/data/methodology` under `/data/:category`), because those pages
+exist and deliberately have no twin. See `templates/next/rewrites.ts`.
 
 ---
 

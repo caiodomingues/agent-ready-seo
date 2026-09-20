@@ -12,12 +12,14 @@
 
 import type { Metadata } from "next";
 import { getGuide } from "@/content/guides";
+import { hasMarkdownTwin, renderTitle, withYear } from "@/lib/seo-metadata";
 
 const SITE_URL = "https://example.com";
 const SITE_NAME = "Site";
 
-/* Root layout. The template appends the site name, so page titles must NOT
- * include it themselves. `default` is used where a page sets no title.
+/* Root layout. The template appends the site name to any page that does not
+ * escape it, so page titles must NOT include it themselves. `default` is used
+ * where a page sets no title.
  *
  * No `alternates.canonical` here: it would be inherited by every page that
  * does not override it, and each would then claim to duplicate the home page.
@@ -42,19 +44,21 @@ export async function generateMetadata({
   if (!guide) return {};
 
   const url = `${SITE_URL}/guides/${slug}`;
+  const headline = withYear(guide.title);
 
   return {
-    // No site name here. The root template appends it. Including it produces
-    // "Title | Site | Site", which hits exactly the hand-written pages.
-    // A year token keeps periodic content current without a content edit.
-    title: `${guide.title} (${new Date().getFullYear()})`,
+    // `absolute` bypasses the layout template. Whether this family carries the
+    // site name is a policy decision in seo-metadata.ts, not something each
+    // page decides; the rendered tag is what the tests and the crawl measure.
+    title: { absolute: renderTitle("guides", headline) },
     description: guide.description,
 
     alternates: {
       canonical: url,
-      // This is the per-page discovery path for the twin. Pair it with the
-      // convention announced in llms.txt.
-      types: { "text/markdown": `${url}.md` },
+      // The per-page discovery path for the twin, emitted only where a twin is
+      // registered. Announcing one that does not exist is the same broken
+      // promise as an llms.txt claim that 404s.
+      ...(hasMarkdownTwin(`/guides/${slug}`) ? { types: { "text/markdown": `${url}.md` } } : {}),
     },
 
     openGraph: {
