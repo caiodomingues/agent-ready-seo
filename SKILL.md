@@ -46,6 +46,7 @@ Read the reference for the layer in play. Do not read all of them.
 | Keep articles correct after the code they explain changes | `references/foundations.md` (entities and authorship) | `templates/generic/content-review.js` |
 | Audit an existing site, or review a plan before building | `references/pitfalls.md` | none |
 | Check that any of it actually works, in production or in CI | `references/verification.md` | none |
+| Act on an agent-readiness scanner report | `references/verification.md` (Loop 2), then the decisions table below | none |
 
 Templates are working code with the framework-neutral contract stated at the top
 of each file. `templates/generic/` holds the same contract as raw HTTP plus one

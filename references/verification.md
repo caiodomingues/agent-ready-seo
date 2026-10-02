@@ -213,7 +213,7 @@ And four from a later report on a content site that already passed the above:
 - **`llms.txt` size.** A map that had grown a glossary and a full FAQ crossed
   the scanner's threshold of about 30,000 characters.
 - **A privacy page** alongside about and contact. See
-  `references/foundations.md`.
+  `references/foundations.md`, and the disagreement below: the site had one.
 - **`Link` headers with agent-relevant relations** on the HTML response. The
   host's own preload `Link` was there; `alternate` to the twin was not.
 
@@ -229,6 +229,11 @@ check ID so the next audit does not reopen them.
   language, or something else is unconfirmed. Do not rewrite a good section to
   chase it; if the user wants to test it, an English heading beside the native
   one is a cheap experiment, run as one.
+- **A localized trust page scored absent.** The privacy page existed at a
+  translated path and was linked from every footer; the report listed privacy
+  as missing. Together with the section above, two checks in one report
+  missed content written in the site's language. Same treatment: record it,
+  and test an English alias only if the user wants to.
 - **A check contradicting another in the same report.** One check credited the
   `Organization` with an address while another listed address as missing.
   Read the evidence lines, not the verdicts.

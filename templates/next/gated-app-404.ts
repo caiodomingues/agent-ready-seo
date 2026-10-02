@@ -34,6 +34,17 @@ export const GATED_APP_PREFIXES = [
 /** Directories under src/app that are served without a session. */
 export const PUBLIC_APP_DIRS = ["blog", "login", "signup", "privacy", "terms", "about", "contact"] as const;
 
+/**
+ * A path some route answers: the home, a public directory or a gated one.
+ * Twin-bearing pages are already known through the twin registry; this is the
+ * fallback for the rest, so an unknown path can get a negotiated 404.
+ */
+export function isKnownPath(pathname: string): boolean {
+  if (pathname === "/") return true;
+  const first = pathname.split("/")[1] ?? "";
+  return (PUBLIC_APP_DIRS as readonly string[]).includes(first) || isGatedAppPath(pathname);
+}
+
 /** A path that exists behind the session gate (page or API). */
 export function isGatedAppPath(pathname: string): boolean {
   if (pathname === "/api" || pathname.startsWith("/api/")) return true;
@@ -77,7 +88,7 @@ This path does not exist. Try:
 `;
 }
 
-function acceptsHtml(accept: string | null): boolean {
+export function acceptsHtml(accept: string | null): boolean {
   return /\btext\/html\b|\bapplication\/xhtml\+xml\b/i.test(accept ?? "");
 }
 

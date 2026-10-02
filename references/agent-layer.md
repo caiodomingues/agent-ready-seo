@@ -73,7 +73,8 @@ probe exactly that path, and an agent that sent `Accept: text/markdown` gets an
 HTML document it did not ask for. Use the same rule as the gated-app branch
 below: a client whose `Accept` includes `text/html` gets the site's 404 page,
 anything else gets the markdown body, and both answer 404. The middleware can
-only do this when it knows which paths exist, so it needs the route list and
+only do this when it knows which paths exist: consult the twin registry first,
+so a page with a twin never reaches the 404 branch, then the route list and
 the two-direction test from that section, even on a site with no login at all.
 Verified on a Next.js 16 production build: the middleware's markdown 404
 reaches the wire unchanged.

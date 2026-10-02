@@ -227,9 +227,11 @@ a person would: `/about` and `/contact`, public, with real content (who operates
 the site, the legal entity, what it does and does not do, how to reach it), and
 an `Organization` with `contactPoint` and, where one is public, `address`. Mark
 them `AboutPage` and `ContactPage`, tied to the organization by `@id`. A
-privacy policy is the third anchor: scorers look for it at `/privacy` (or
-linked from every page's footer), and a product that takes any personal data
-needs one anyway. These are the pages readiness scorers check first and most
+privacy policy is the third anchor, linked from every page's footer; a
+product that takes any personal data needs one anyway. Scanners that probe
+English paths can miss a localized one: a privacy page at a translated path,
+linked from every footer, was reported missing. A redirect from the English
+path is a cheap way to test that, and it is the user's call. These are the pages readiness scorers check first and most
 sites never wrote. Whether the address is published is the user's decision,
 not the scorer's (see SKILL.md).
 

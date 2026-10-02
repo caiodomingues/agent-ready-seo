@@ -148,15 +148,13 @@ export function acceptsNothingWeServe(acceptHeader: string | null): boolean {
  *     const { pathname } = req.nextUrl;
  *     const accept = req.headers.get("accept");
  *
- *     // Only with a trustworthy route list: the directory test in
- *     // gated-app-404.ts. Without it, a page someone forgot to register
- *     // becomes a 404 for agents while it renders fine in a browser.
- *     if (!isKnownPath(pathname) && !acceptsHtml(accept)) {
- *       return markdownResponse(null);
- *     }
- *
  *     const twin = mdTwinFor(pathname);                // registry in rewrites.ts
- *     if (!twin) return NextResponse.next();
+ *     if (!twin) {
+ *       // Registry first, so a page with a twin never reaches this branch.
+ *       // isKnownPath is only as trustworthy as the directory test behind it.
+ *       if (!isKnownPath(pathname) && !acceptsHtml(accept)) return markdownResponse(null);
+ *       return NextResponse.next();
+ *     }
  *
  *     if (acceptsNothingWeServe(accept)) {
  *       return new NextResponse("406 - not acceptable\n", {
@@ -203,8 +201,8 @@ export function acceptsNothingWeServe(acceptHeader: string | null): boolean {
  *   curl -sI https://example.com/guides/onboarding | grep -i "^link"
  *                                                   # rel="alternate" to the twin
  *
- * `isKnownPath` is the public-route list plus the gated prefixes, and
- * `acceptsHtml` the same test the gated branch uses; see gated-app-404.ts.
+ * `isKnownPath` and `acceptsHtml` live in gated-app-404.ts, next to the
+ * route lists and the test that keeps them honest.
  * The Link header set here reached the wire on a Next.js 16 production build.
  * The host's own preload Link values only exist on the deployed platform, so
  * check there that both survive.
