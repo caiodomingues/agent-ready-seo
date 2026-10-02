@@ -38,9 +38,13 @@ GET https://example.com/guides/does-not-exist.md
 
 # EXPECTED
 # HTTP/1.1 404 Not Found
-# Content-Type: text/plain; charset=utf-8
+# Content-Type: text/markdown; charset=utf-8
 #
 # 404 - not found
+#
+# This path does not exist. Try:
+# - https://example.com/llms.txt   (index of everything)
+# - https://example.com/sitemap.xml
 #
 # An empty 200 is worse than a 404: it teaches an agent the page exists and is
 # blank, and it enters indexes as a real page.
@@ -64,6 +68,57 @@ GET https://example.com/guides/onboarding
 # EXPECTED (in the head)
 # <link rel="canonical" href="https://example.com/guides/onboarding">
 # <link rel="alternate" type="text/markdown" href="https://example.com/guides/onboarding.md">
+#
+# EXPECTED (in the headers, appended to any Link the host already sends)
+# Link: <https://example.com/guides/onboarding.md>; rel="alternate"; type="text/markdown"
+#
+# A page without a twin announces nothing, in either place.
+
+
+### 4b. The same URL answers markdown when asked
+
+GET https://example.com/guides/onboarding
+Accept: text/markdown
+
+# EXPECTED
+# HTTP/1.1 200 OK
+# Content-Type: text/markdown; charset=utf-8
+# Vary: Accept
+# Link: <https://example.com/guides/onboarding>; rel="canonical"
+#
+# (the same body as /guides/onboarding.md)
+#
+# NOTES
+# - q-values decide: "text/html;q=0.9, text/markdown" gets markdown, a browser's
+#   "text/html,...,*/*;q=0.8" gets HTML.
+# - The .md URL with this header still returns the twin, never a twin of a twin.
+# - HEAD answers the same headers as GET.
+
+
+### 4c. A type the resource cannot produce is a 406
+
+GET https://example.com/guides/onboarding
+Accept: application/pdf
+
+# EXPECTED
+# HTTP/1.1 406 Not Acceptable
+# Vary: Accept
+
+
+### 4d. An unknown path negotiates its 404 as well
+
+GET https://example.com/nothing-here
+Accept: text/markdown
+
+# EXPECTED
+# HTTP/1.1 404 Not Found
+# Content-Type: text/markdown; charset=utf-8
+#
+# (the recovery body from section 2)
+#
+# The same path with Accept: text/html returns the site's HTML 404 page, also
+# with status 404. Rule: Accept includes text/html -> HTML page; anything else,
+# including */* and no header -> markdown body.
 
 
 ### 5. The map for models
@@ -86,6 +141,10 @@ GET https://example.com/llms.txt
 #
 # RULE: every URL this file advertises must return 200. A promised convention
 # that 404s costs the trust of the whole file.
+#
+# RULE: the map stays under a byte budget (scanners flag about 30,000
+# characters). Definitions, FAQ answers and the long tail of articles belong in
+# llms-full.txt or in the hub twins, not here.
 
 
 ### 6. The whole corpus, for bulk ingestion
@@ -151,6 +210,12 @@ Referer: https://chatgpt.com/
 #
 #   curl -sI https://example.com/guides/onboarding.md
 #   curl -s  https://example.com/guides/nope.md | head -1
+#   curl -s -D - -o /dev/null -H "Accept: text/markdown" https://example.com/nothing-here \
+#     | grep -iE "^HTTP|content-type"                                  # 404 text/markdown
+#   curl -sI -H "Accept: text/markdown" https://example.com/guides/onboarding \
+#     | grep -iE "^HTTP|content-type|vary"                             # 200 markdown, Vary
+#   curl -sI https://example.com/guides/onboarding | grep -i "^link"   # alternate to twin
+#   curl -s  https://example.com/llms.txt | wc -c                      # under budget
 #   curl -s  https://example.com/llms.txt | grep -oE "https://[^ )]+\.md" | sort -u \
 #     | while read u; do echo "$(curl -s -o /dev/null -w '%{http_code}' "$u") $u"; done
 #   curl -s  https://example.com/sitemap.xml | grep -c "\.md</loc>"    # expect 0

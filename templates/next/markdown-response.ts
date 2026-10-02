@@ -6,7 +6,8 @@
  *          Cache-Control: public, max-age=3600, s-maxage=3600
  *          X-Robots-Tag: all
  *          Link: <html-url>; rel="canonical"
- *   404 -> Content-Type: text/plain; charset=utf-8, non-empty body
+ *   404 -> Content-Type: text/markdown; charset=utf-8, non-empty body with
+ *          recovery links
  *
  * Two decisions worth keeping when adapting this:
  *
@@ -144,10 +145,18 @@ export function acceptsNothingWeServe(acceptHeader: string | null): boolean {
  * already carries the suffix is never renegotiated into a twin of the twin.
  *
  *   export function middleware(req: NextRequest) {
- *     const twin = mdTwinFor(req.nextUrl.pathname);   // registry in rewrites.ts
- *     if (!twin) return NextResponse.next();
- *
+ *     const { pathname } = req.nextUrl;
  *     const accept = req.headers.get("accept");
+ *
+ *     // Only with a trustworthy route list: the directory test in
+ *     // gated-app-404.ts. Without it, a page someone forgot to register
+ *     // becomes a 404 for agents while it renders fine in a browser.
+ *     if (!isKnownPath(pathname) && !acceptsHtml(accept)) {
+ *       return markdownResponse(null);
+ *     }
+ *
+ *     const twin = mdTwinFor(pathname);                // registry in rewrites.ts
+ *     if (!twin) return NextResponse.next();
  *
  *     if (acceptsNothingWeServe(accept)) {
  *       return new NextResponse("406 - not acceptable\n", {
@@ -162,7 +171,10 @@ export function acceptsNothingWeServe(acceptHeader: string | null): boolean {
  *       return res;
  *     }
  *
- *     return NextResponse.next();
+ *     const res = NextResponse.next();
+ *     // append, not set: the host may add its own Link values (preloads).
+ *     res.headers.append("Link", `<${SITE_URL}${twin}>; rel="alternate"; type="text/markdown"`);
+ *     return res;
  *   }
  *
  *   export const config = {
@@ -186,6 +198,16 @@ export function acceptsNothingWeServe(acceptHeader: string | null): boolean {
  *     | grep -iE "^HTTP|content-type|vary"          # 200, text/markdown, Vary: Accept
  *   curl -sI -H "Accept: text/markdown" https://example.com/guides/onboarding.md \
  *     | grep -iE "^HTTP"                            # 200, not renegotiated
+ *   curl -s -D - -o /dev/null -H "Accept: text/markdown" https://example.com/nothing-here \
+ *     | grep -iE "^HTTP|content-type"               # 404, text/markdown
+ *   curl -sI https://example.com/guides/onboarding | grep -i "^link"
+ *                                                   # rel="alternate" to the twin
+ *
+ * `isKnownPath` is the public-route list plus the gated prefixes, and
+ * `acceptsHtml` the same test the gated branch uses; see gated-app-404.ts.
+ * The Link header set here reached the wire on a Next.js 16 production build.
+ * The host's own preload Link values only exist on the deployed platform, so
+ * check there that both survive.
  */
 
 /* PORTING

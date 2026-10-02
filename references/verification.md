@@ -141,19 +141,26 @@ not think to check, using a fetcher that is not yours.
 Operated by Vercel at `is-agentic.com`, scanning engine by Ora. Scores how
 readily an agent can discover, access, understand and use a public site.
 
-**Structure.** Four layers, roughly 120 checks:
+**Structure.** Checks are grouped by maturity: essential checks share an
+80-point pool, recommended checks share 20, and emerging signals add a few
+bonus points. Checks that do not apply to a site are excluded rather than
+counted against it, and conditional groups (API, OAuth, MCP, GraphQL) activate
+only when that surface is detected. The grouping has changed before and will
+again, which is one more reason to record check IDs rather than totals.
 
-| Layer | Points | Focus |
-| --- | --- | --- |
-| Discovery | 20 | Being found and recommended |
-| Access | 30 | Fetchable content, structure, HTTP behavior |
-| Usability | 40 | Authenticating, operating the product, handing back a usable result |
-| Payments | 10 | A machine-payable path |
-
-Essential checks share an 80-point pool, recommended checks share 20, emerging
-signals add up to 5 bonus points. Checks that do not apply to a site are
-excluded rather than counted against it, and conditional groups (API, OAuth, MCP,
-GraphQL) activate only when that surface is detected.
+**The same engine, two views, two very different numbers.** Ora also publishes
+its own report for a domain (`ora.ai/score/<domain>`), built from the same
+checks but organized as about ten questions: can an agent discover you, does
+it welcome agents, does it understand you, can it integrate, is the
+integration well built, can it use you in production, authenticate, transact,
+act through you, and operate the site directly. Each question gets its own
+score, and the questions about integration, production use, authentication and
+acting through the site count API, MCP, OAuth and WebMCP checks whether or not
+the site has any reason to offer them. A content site that follows this skill
+scored near the top on the applicability-weighted report and near zero on
+several of those questions in the same week. Neither number is wrong; they
+answer different questions. Read the per-question view to find checks, and
+track the applicability-weighted one over time.
 
 **Three ways in, all public and read-only:**
 
@@ -198,6 +205,41 @@ until a scanner asks for them:
   domain. Not fixable in code when the name is a common word; record it as a
   known failure rather than chasing it.
 
+And four from a later report on a content site that already passed the above:
+
+- **The 404 for an unknown path, negotiated.** The suffixed twin answered a
+  markdown 404, but `/nothing-here` with `Accept: text/markdown` still got the
+  HTML 404 page. Partial credit. See `references/agent-layer.md`.
+- **`llms.txt` size.** A map that had grown a glossary and a full FAQ crossed
+  the scanner's threshold of about 30,000 characters.
+- **A privacy page** alongside about and contact. See
+  `references/foundations.md`.
+- **`Link` headers with agent-relevant relations** on the HTML response. The
+  host's own preload `Link` was there; `alternate` to the twin was not.
+
+### Known disagreements with scanners
+
+Findings that look actionable and are not, or not yet. Record them next to the
+check ID so the next audit does not reopen them.
+
+- **A section present but scored absent.** A "when to use this site" section
+  that named real jobs, entry points and exclusions, near the top of the map,
+  scored zero on the when-to-use check. The section was written in the site's
+  language, not in English; whether the check matches the heading text, the
+  language, or something else is unconfirmed. Do not rewrite a good section to
+  chase it; if the user wants to test it, an English heading beside the native
+  one is a cheap experiment, run as one.
+- **A check contradicting another in the same report.** One check credited the
+  `Organization` with an address while another listed address as missing.
+  Read the evidence lines, not the verdicts.
+- **A developer portal found at `/dashboard`.** A logged-in app area matched a
+  path probe. It is a false positive, and it inflates the integration score.
+- **`sameAs` and Wikidata.** Scored as missing; the skill leaves `sameAs` out
+  when there is no account that is the organization, and creating a Wikidata
+  item is the user's call. See the decisions table in SKILL.md.
+- **A dedicated agent view (`?mode=agent`), user-agent-based markdown, and the
+  product layers.** Not gaps for a content site. See the decisions table.
+
 ### Reading a score honestly
 
 - **The evidence is the product, not the number.** The failed and partial
@@ -213,20 +255,23 @@ until a scanner asks for them:
 
 ### What this skill does and does not cover
 
-Mapping the layers above onto this skill, honestly:
+Mapping the per-question view onto this skill, honestly:
 
-| Layer | Covered here |
+| Question | Covered here |
 | --- | --- |
-| Discovery | Yes. `foundations.md`, `pseo.md`, `citable-data.md` |
-| Access | Mostly. `agent-layer.md`, `schema-catalog.md` |
-| Usability | **No.** Agent-operable product surfaces: authentication flows an agent can complete, forms and controls it can drive, an API or MCP server for your product |
-| Payments | **No.** Machine-payable checkout |
+| Discover and trust you | Mostly. `foundations.md`, `pseo.md`, `citable-data.md`. Registries, SDK packages and a Wikidata item are outside it |
+| Welcome agents | Yes. `foundations.md` (robots), `agent-layer.md` (404s, negotiation) |
+| Understand who you are | Yes. `agent-layer.md`, `schema-catalog.md`, `foundations.md` (trust anchors) |
+| Operate the website directly | Mostly. `agent-layer.md` for reading; WebMCP is a decision for the free tool only (SKILL.md) |
+| Transact | Partly. Public pricing and `pricing.md`; agent payment protocols are not |
+| Integrate, integration quality, production use, authenticate, act through an agent | **No.** An API, OpenAPI, an MCP server, OAuth, an SDK, generative UI: making the product operable by an agent |
 
 So a site that follows this skill completely will still not score full marks, and
-that is expected rather than a gap to paper over. The last two layers are a
-different discipline: making the **product** operable by an agent, not making the
+that is expected rather than a gap to paper over. The last row is a different
+discipline: making the **product** operable by an agent, not making the
 **content** legible to one. If a report's biggest losses are there, this skill is
-the wrong tool for that part of the work.
+the wrong tool for that part of the work, and whether to start that work is the
+user's decision.
 
 ---
 

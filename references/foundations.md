@@ -226,8 +226,12 @@ a guessed URL there is worse than none.
 a person would: `/about` and `/contact`, public, with real content (who operates
 the site, the legal entity, what it does and does not do, how to reach it), and
 an `Organization` with `contactPoint` and, where one is public, `address`. Mark
-them `AboutPage` and `ContactPage`, tied to the organization by `@id`. They are
-the pages readiness scorers check first and most sites never wrote.
+them `AboutPage` and `ContactPage`, tied to the organization by `@id`. A
+privacy policy is the third anchor: scorers look for it at `/privacy` (or
+linked from every page's footer), and a product that takes any personal data
+needs one anyway. These are the pages readiness scorers check first and most
+sites never wrote. Whether the address is published is the user's decision,
+not the scorer's (see SKILL.md).
 
 **Real authorship on editorial content.** A named person, a visible date, a
 `Person` entity, and an author page that actually exists and is linked from the

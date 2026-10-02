@@ -248,7 +248,7 @@ the code, because the gap between them is the point.
 - [ ] Multiple properties reference the same organization `@id`
 - [ ] Organization carries `contactPoint` (and `address` where one is public);
       `sameAs` names only accounts that ARE the organization
-- [ ] `/about` and `/contact` exist, are public, and carry real content
+- [ ] `/about`, `/contact` and a privacy policy exist, are public, and carry real content
 - [ ] `og:site_name` and `WebSite.name` agree, so the engine does not derive the
       site name from the domain
 - [ ] FAQ markup and the visible FAQ are fed by the same array, not two strings
@@ -266,6 +266,8 @@ the code, because the gap between them is the point.
 - [ ] `/{path}.md` returns 200, `text/markdown`, and a canonical `Link` header
 - [ ] Missing pages return 404, not an empty 200
 - [ ] The 404 body points at recovery paths (`llms.txt`, sitemap, nearest hub)
+- [ ] An unknown path without the suffix answers the markdown 404 to a client that
+      does not accept `text/html`, and the HTML 404 page to one that does
 - [ ] `Accept: text/markdown` on a content URL returns markdown, with `Vary: Accept`
 - [ ] An Accept header the resource cannot satisfy returns 406, and q-values are honored
 - [ ] The `.md` URL with `Accept: text/markdown` still returns the twin (no
@@ -273,10 +275,13 @@ the code, because the gap between them is the point.
 - [ ] `llms-full.txt` stays under a stated byte budget, with overflow listed as
       links rather than dropped
 - [ ] `llms.txt` has a "when to use this" section naming real jobs
+- [ ] `llms.txt` stays under its own budget (scanners flag about 30,000
+      characters), enforced where it is generated
 - [ ] The home twin canonicals to the root, not to `/index`
 - [ ] `llms.txt` claims match reality, section by section
 - [ ] `llms.txt` and `llms-full.txt` are generated from live content
-- [ ] `rel=alternate` present on pages that have a twin
+- [ ] `rel=alternate` present on pages that have a twin, in the head and as a
+      `Link` header, appended to whatever the host already sends
 - [ ] Overlapping rewrite patterns are ordered specific-first, with a test
 - [ ] Non-ASCII characters round-trip correctly
 

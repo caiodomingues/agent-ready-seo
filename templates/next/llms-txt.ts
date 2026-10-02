@@ -151,4 +151,15 @@ export async function GET_FULL(): Promise<Response> {
  *     | while read u; do echo "$(curl -s -o /dev/null -w '%{http_code}' "$u") $u"; done
  * Every URL the map advertises must return 200. This check is the one that
  * catches a promised convention that was never fully delivered.
+ *
+ * THE MAP'S BUDGET, as a test next to the route. Scanners flag a map over about
+ * 30,000 characters, and it grows past that one useful block at a time. When
+ * it fails, move answers (definitions, FAQ, the article long tail) into
+ * llms-full.txt or the hub twins; do not raise the number.
+ *
+ *   import { GET } from "./route";
+ *   it("llms.txt stays a map", async () => {
+ *     const text = await (await GET()).text();
+ *     expect(text.length).toBeLessThanOrEqual(30_000);
+ *   });
  */

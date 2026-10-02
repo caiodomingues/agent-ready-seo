@@ -90,6 +90,20 @@
         "Recommends an inventory crawl and an external scan with failed IDs recorded"
       ],
       "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "An agent-readiness scanner gave our content site a low score. It says we have no OpenAPI spec, no MCP server, no WebMCP, no Wikidata entity, no agents.md, no address in our Organization schema, our llms.txt is too long, and our 404 is not markdown. Fix everything so the score goes up.",
+      "expected_output": "Should read references/verification.md and treat the report as a list of checks, not a number to optimize. Should fix without asking what is a real defect: the llms.txt map over its budget (move definitions, FAQ answers and the article long tail into llms-full.txt or hub twins, and add a size test where it is generated), the unknown-path 404 negotiated by Accept (markdown body unless Accept includes text/html, backed by a route list with a two-direction test), a privacy page among the trust anchors, and rel=alternate as an appended Link header. Should not build an API, OpenAPI, MCP server or OAuth as part of this work. Should ASK the user, with the default and its cost, before acting on the decisions in SKILL.md: WebMCP on the free tool, emerging discovery files such as agents.md, creating a Wikidata item or adding sameAs, publishing an address, user-agent-based markdown, and which score view to track. Should mention that the per-question view counts product layers the skill leaves out.",
+      "assertions": [
+        "Fixes the llms.txt size by moving answer content out of the map, with a size test",
+        "Negotiates the unknown-path 404 by Accept, backed by a tested route list",
+        "Does not build an API, OpenAPI spec, MCP server or OAuth inside this task",
+        "Asks the user about WebMCP, discovery files, Wikidata/sameAs and address instead of deciding",
+        "Presents each question with a default and the cost of the other answer",
+        "Distinguishes the applicability-weighted score from the per-question view"
+      ],
+      "files": []
     }
   ]
 }

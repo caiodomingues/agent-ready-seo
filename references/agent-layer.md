@@ -67,6 +67,17 @@ This path does not exist. Try:
 The same applies to the HTML 404. A shell page with the word "404" and a link
 home is a wasted response for both readers.
 
+**The 404 negotiates too.** An unknown path with no suffix (`/nothing-here`)
+reaches the framework's HTML 404 page, whatever the client asked for. Scanners
+probe exactly that path, and an agent that sent `Accept: text/markdown` gets an
+HTML document it did not ask for. Use the same rule as the gated-app branch
+below: a client whose `Accept` includes `text/html` gets the site's 404 page,
+anything else gets the markdown body, and both answer 404. The middleware can
+only do this when it knows which paths exist, so it needs the route list and
+the two-direction test from that section, even on a site with no login at all.
+Verified on a Next.js 16 production build: the middleware's markdown 404
+reaches the wire unchanged.
+
 Four decisions inside that response are load-bearing.
 
 ### 1. Same URL plus a suffix, not a separate endpoint
@@ -261,6 +272,25 @@ alternative. In Next.js metadata this is `alternates.types`.
 <link rel="alternate" type="text/markdown" href="https://example.com/guides/onboarding.md">
 ```
 
+**The same pointer as an HTTP header.** An agent that issues a `HEAD`, or reads
+headers before deciding whether to parse the body, never sees the `<link>`
+element. Send it on the HTML response as well:
+
+```
+Link: <https://example.com/guides/onboarding.md>; rel="alternate"; type="text/markdown"
+```
+
+`alternate` is a registered relation, and the header form is RFC 8288. Some
+scanners also look for `rel="sitemap"` in that header; it is not in the IANA
+registry, so treat it as a scanner convention, harmless but not a standard.
+Read the twin URL from the same registry as everything else, so a page without
+a twin announces nothing. Append to `Link` rather than replacing it: hosts add
+their own `Link` values (font and style preloads) on the way out, and a
+replacement would drop them. Whether the two merge depends on the host, so
+check the deployed response; a local production build does not reproduce the
+platform's preloads. In Next.js, a `Link` set in the middleware reaches the
+wire on the HTML response, unlike `Vary`.
+
 **The URL pattern itself.** Documented in `llms.txt` with worked examples, so an
 agent can generalize instead of enumerating.
 
@@ -274,6 +304,19 @@ agent can generalize instead of enumerating.
 Two distinct consumption modes. An agent browsing wants the map and will fetch
 the one page it needs. A pipeline doing bulk ingestion wants a single file and no
 crawl.
+
+**Give `llms.txt` a budget too, a much smaller one.** The map is read at the
+start of a task, often in full, before the agent knows which page it needs.
+External scanners flag a map over roughly 30,000 characters. A map grows past
+that one useful block at a time: a glossary, a full FAQ with answers, a link
+per article. Keep in the map what routes a fetch (the summary, "when to use",
+the question-to-URL map, one line per hub) and move what answers a question
+(definitions, FAQ answers, the long tail of articles) into `llms-full.txt` or
+into the hub twins the map already links. Enforce it where the file is
+generated: measure the output and fail the build past the budget. A budget that
+is only written in a document is exceeded within a quarter. If the map cannot
+fit without dropping whole sections, splitting it per section is an option;
+that one is the user's decision (see SKILL.md).
 
 **Give `llms-full.txt` a byte budget.** Its reader is a context window. Around
 300 KB of Portuguese or English prose is roughly 75k tokens, and past that the
@@ -320,6 +363,25 @@ map says "every page answers at URL + .md" while page types added later have no
 twin. An agent that gets a 404 on the documented convention stops trusting the
 whole file. Either generate the claim from the list of routes that really have
 twins, or state the covered sections explicitly.
+
+### Emerging conventions
+
+Readiness scanners probe for more discovery files every quarter. Whether to
+publish each one is the user's call (see the decisions table in SKILL.md);
+this table is what to tell them when they ask.
+
+| File | What it is for | Worth it when |
+| --- | --- | --- |
+| `pricing.md` | Plans and prices as markdown | Pricing is public. Generate it from the same source as the pricing page; a thin or stale copy scores worse than none |
+| `agents.md` at the root | Instructions for agents acting on the site | The site has something an agent can *do* beyond reading. For a content site it repeats `llms.txt` |
+| `/.well-known/agent-skills/index.json` | Index of published agent skills, with digests | You publish an official skill for your product |
+| `/.well-known/ard.json` (formerly `ai-catalog.json`) | Catalog of the site's agent-facing resources | You have more than one such resource (an API, an MCP server, a skill) to catalog |
+| `schemamap:` in `robots.txt` | NLWeb feed of structured data | You run an NLWeb `/ask` endpoint, which is product work |
+| `?mode=agent` | A dedicated agent view of the page | Never, when the `.md` twin and negotiation exist: it is a third rendering of the same text |
+
+The rule that applies to all of them is the one above: each file is a promise.
+A file that advertises a resource you do not maintain costs more trust than its
+absence.
 
 ---
 
@@ -391,6 +453,10 @@ curl -sI https://example.com/guides/onboarding.md   # 200, text/markdown, Link c
 curl -s  https://example.com/guides/does-not-exist.md | head -1   # 404 body, not HTML
 curl -s  https://example.com/llms.txt | head -40
 curl -s  https://example.com/index.md | head -5     # home twin, canonical must be "/" not "/index"
+curl -s  https://example.com/llms.txt | wc -c       # under the map's budget
+curl -s -D - -o /dev/null -H "Accept: text/markdown" https://example.com/nothing-here \
+  | grep -iE "^HTTP|content-type"                   # 404, text/markdown
+curl -sI https://example.com/guides/onboarding | grep -i "^link"   # rel="alternate" to the twin
 ```
 
 The home page is the usual edge case: its twin lives at `/index.md` while its

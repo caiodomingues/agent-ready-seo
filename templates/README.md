@@ -20,7 +20,7 @@ hundred lines of routing and headers, not a platform feature.
 
 | File | Implements |
 | --- | --- |
-| `next/markdown-response.ts` | The shared HTTP wrapper for every `.md` twin, plus front matter |
+| `next/markdown-response.ts` | The shared HTTP wrapper for every `.md` twin, front matter, and the negotiation middleware (twin, 406, negotiated 404, `Link` alternate) |
 | `next/md-route.ts` | A twin route, in both the generated and file-backed shapes |
 | `next/rewrites.ts` | The twin registry, and the rewrites, negotiation and `rel=alternate` that read it |
 | `next/page-metadata.ts` | A page consuming the metadata module: canonical, alternate, social image |
@@ -32,7 +32,7 @@ hundred lines of routing and headers, not a platform feature.
 | `next/dataset-jsonld.ts` | `Dataset` markup and the shared organization `@id` |
 | `next/index-basket.ts` | Fixed basket and the aggregation guards behind a published figure |
 | `next/first-touch.ts` | Attribution that survives AI referrals without breaking caching |
-| `generic/contract.http` | Every endpoint as request and expected response |
+| `generic/contract.http` | Every endpoint as request and expected response, including `Accept` negotiation, the 406 and the negotiated 404 |
 | `generic/express-md-route.js` | The agent layer in plain Node |
 | `generic/content-review.js` | Editorial content fingerprinted with its code dependencies, checked in CI |
 
