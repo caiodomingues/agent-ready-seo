@@ -104,6 +104,19 @@
         "Distinguishes the applicability-weighted score from the per-question view"
       ],
       "files": []
+    },
+    {
+      "id": 8,
+      "prompt": "We publish a price report page per segment built from our 2025 survey, and a blog that Claude drafts for us. Set up the page titles with the year so they look fresh, and put a byline on the blog posts. We were thinking of signing them as 'Ana Ribeiro, pricing analyst'.",
+      "expected_output": "Should read references/foundations.md (titles, entities and authorship) and treat three points as the user's decisions from SKILL.md, asked together with the default and the cost of each other answer: where the title year comes from (default: the data's period, so 2025 on pages built from the 2025 survey, not the current year), who signs content drafted with an LLM (default: the person who reviewed it, or the organization; never the model; a persona presented as a real analyst is what Google lists as fabricated authorship), and whether pages say how they were made (default: a short method line on the programmatic pages). Should not wire a year that comes from the clock by default, and should keep the year inside the title budget.",
+      "assertions": [
+        "Asks about the year source, the byline and the how-it-was-made note instead of deciding",
+        "Presents each question with a default and the cost of the other answer",
+        "Defaults the title year to the data's period, not the current year",
+        "Does not credit the model as author, and names the fabricated-authorship risk of an invented analyst",
+        "Keeps the year token conditional on the title budget"
+      ],
+      "files": []
     }
   ]
 }

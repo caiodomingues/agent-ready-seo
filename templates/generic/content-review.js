@@ -54,7 +54,8 @@ const FEATURES = {
 /* ------------------------------ entries ------------------------------ */
 
 // Replace with the project's real registries. Each entry needs a stable id, the
-// content as a string (metadata included, so a changed title counts), the
+// content as a string (metadata included: title, description, the fields the
+// JSON-LD is built from, image alt text; a change to any of them counts), the
 // features it depends on, and how often it must be re-read regardless.
 function editorialEntries() {
   const posts = JSON.parse(readFileSync("content/posts.json", "utf8"));

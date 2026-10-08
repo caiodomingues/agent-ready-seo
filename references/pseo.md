@@ -158,6 +158,12 @@ Concrete devices, cheapest first:
   Register the embed in one list (which articles carry which tool), because
   adding one changes what the page claims and should count as an edit for
   review purposes.
+- **A line saying how the page was made.** Source, observation count and
+  snapshot date, linked to the methodology page. It answers the "how was this
+  generated?" a reader of automated content asks, which Google's guidance on
+  generated content asks sites to answer where it is reasonably expected, and
+  the line is itself quotable. Showing it is the default, and the user's call
+  (see SKILL.md).
 
 ---
 

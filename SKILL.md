@@ -1,8 +1,8 @@
 ---
 name: agent-ready-seo
-description: Use when a site needs to be readable and citable by AI answer engines as well as search crawlers. Covers the markdown twin layer, llms.txt, structured data, programmatic pages backed by real data, publishing a citable dataset, and attributing AI referrals. Also use when the user mentions "AEO", "GEO", "answer engine optimization", "generative engine optimization", "llms.txt", "llms-full.txt", "markdown version of my pages", "get cited by ChatGPT", "AI search traffic", "AI crawlers", "JSON-LD", "structured data", "Dataset schema", "programmatic SEO", "thin content", "doorway pages", "sitemap", "canonical", "IndexNow", "title tag", "CTR", "click-through rate", "Search Console", "title experiment", "agent readiness score", "is-agentic", "WebMCP", or "where is my AI traffic coming from". For persuasion and page copy see copywriting; for classic on-page issue hunting see seo-audit.
+description: Use when a site needs to be readable and citable by AI answer engines as well as search crawlers. Covers the markdown twin layer, llms.txt, structured data, programmatic pages backed by real data, publishing a citable dataset, and attributing AI referrals. Also use when the user mentions "AEO", "GEO", "answer engine optimization", "generative engine optimization", "llms.txt", "llms-full.txt", "markdown version of my pages", "get cited by ChatGPT", "AI search traffic", "AI crawlers", "JSON-LD", "structured data", "Dataset schema", "programmatic SEO", "thin content", "doorway pages", "sitemap", "canonical", "IndexNow", "title tag", "CTR", "click-through rate", "Search Console", "title experiment", "AI-generated content", "byline", "agent readiness score", "is-agentic", "WebMCP", or "where is my AI traffic coming from". For persuasion and page copy see copywriting; for classic on-page issue hunting see seo-audit.
 metadata:
-  version: 1.3.0
+  version: 1.4.0
 license: MIT
 ---
 
@@ -129,8 +129,8 @@ rest of the work.
 
 ## Decisions that belong to the user
 
-Some recommendations, mostly the ones external scorers push, are trade-offs
-rather than defects. **Do not decide these on the user's behalf.** When the
+Some recommendations, from external scorers and from search engine guidance
+alike, are trade-offs rather than defects. **Do not decide these on the user's behalf.** When the
 work reaches one, ask the question (with the host's question tool when it has
 one), show the options with the default and its cost, and proceed with the
 answer. Ask only the ones the current task touches,
@@ -148,6 +148,9 @@ default.
 | **Create a Wikidata item, or list social accounts in `sameAs`?** | Create the item and link it / list the organization's own accounts / leave `sameAs` out | **Leave out** what does not exist yet. Creating a Wikidata item is an action on a third-party site with notability rules; it is the user's to take, never the agent's. Accounts belonging to a founder or a persona are not the organization. |
 | **Put a postal `address` on the `Organization`?** | Full address / city and country only / none | **Only what is already public.** For a sole operator the registered address is often a home. Scorers flag the gap; publishing a home address to close it is not worth it. |
 | **Serve markdown to known AI user agents even without `Accept: text/markdown`?** | Select by `Accept` only / also by user agent | **`Accept` only.** It is the signal the client controls and states. Selecting by user agent makes one URL answer differently by who claims to be asking, depends on a bot list that goes stale, and edges toward what search engines police as cloaking. |
+| **Where does the year in a title come from?** | The period the page's data covers / no year at all / the current calendar year | **The data's period**, and no token on a page whose content has none. A year that advances on 1 January over unchanged content is what Google's own self-assessment names as faking freshness, and the title then promises data the page does not have. Dropping the year costs only the freshness cue. See `references/foundations.md` (titles). |
+| **Who signs content drafted with an LLM?** | The person who reviewed it and answers for it / the organization / a persona | **The person who reviewed it**, or the organization when no one will put a name on it. Never the model: Google calls an AI byline "probably not the best way" to show AI was involved. A persona is a brand call, but a byline that reads as a real expert who does not exist is what Google lists as fabricated authorship (made-up names, AI-generated headshots, false credentials). A mascot presented as a mascot is not that. |
+| **Say how generated content was made?** | A short note on pages where a reader would ask "how was this made?" / one site-wide page on how content is produced, linked from those pages / nothing | **The note, where a reader would ask:** programmatic pages and articles substantially drafted by a model. Google asks for it "when it would be reasonably expected" and documents no penalty for leaving it out, so this is a trust choice, not a compliance one. Written as method (source, count, snapshot date) rather than as an "AI" label, it is also a line an answer engine quotes. Cost: a line of copy per page family, and some audiences discount anything that mentions a model. See `references/pseo.md`. |
 | **Go after the scorer's product layers** (public API, OpenAPI, MCP server, OAuth, an SDK, agent payments)? | Out of scope for this work / plan it as product work | **Out of scope.** These are product decisions with their own cost, not publishing fixes. Record them in the scan notes so the gap is known, and do not build any of it as part of an SEO task. |
 | **Which external score to track over time?** | The applicability-weighted report / the per-question breakdown / both | **Applicability-weighted, failed check IDs recorded.** The per-question view counts product layers this skill leaves out. See `references/verification.md`. |
 

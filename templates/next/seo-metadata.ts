@@ -9,8 +9,9 @@
  *     raw string on the content object: the rendered tag, suffix included.
  *   - Whether a page family carries the site name is a policy table, not a
  *     per-page choice. Changing a family is changing one line.
- *   - A year token is added only when the title has none and the result still
- *     fits the budget.
+ *   - A year token is the period the page's content covers, never the
+ *     current date, and is added only when the content has a period, the
+ *     title has no year, and the result still fits the budget.
  *   - Experiment variants override title and description by canonical path,
  *     carry an experiment id and a start date, and are reverted by deleting
  *     the entry. The original stays on the content object.
@@ -103,9 +104,13 @@ export function renderTitle(family: SeoFamily, headline: string): string {
  * Freshness token, added only when the headline has no year and the result
  * still fits. Without the guard a 55-character title gains seven and is cut
  * exactly on the year it was trying to show.
+ *
+ * `year` is the period the content covers. No clock default: a token that
+ * advances on 1 January over unchanged content is what search engines read as
+ * faked freshness, and the title then promises data the page does not have.
  */
-export function withYear(headline: string, year = new Date().getFullYear()): string {
-  if (/\b20\d{2}\b/.test(headline)) return headline;
+export function withYear(headline: string, year: number | undefined): string {
+  if (year === undefined || /\b20\d{2}\b/.test(headline)) return headline;
   const dated = `${headline} (${year})`;
   return dated.length <= TITLE_MAX ? dated : headline;
 }
@@ -179,13 +184,14 @@ export function toMetadata(seo: PageSeo): Metadata {
 
 /* ------------------------------ families ------------------------------ */
 
-export function guideSeo(slug: string, year?: number): PageSeo | null {
+export function guideSeo(slug: string): PageSeo | null {
   const guide = getGuide(slug);
   if (!guide) return null;
   return page({
     family: "guides",
     path: `/guides/${guide.slug}`,
-    headline: withYear(guide.metaTitle, year),
+    // The year of the data the guide quotes; evergreen guides leave it unset.
+    headline: withYear(guide.metaTitle, guide.dataYear),
     description: guide.metaDescription,
     og: { type: "article", tag: guide.category },
   });
@@ -203,13 +209,10 @@ export function postSeo(slug: string): PageSeo | null {
   });
 }
 
-/**
- * Every page whose metadata this module owns, for the tests and the crawl.
- * `year` is a parameter so the test is deterministic across New Year.
- */
-export function listAllPages(year = new Date().getFullYear()): PageSeo[] {
+/** Every page whose metadata this module owns, for the tests and the crawl. */
+export function listAllPages(): PageSeo[] {
   return [
-    ...getPublishedGuides().map((g) => guideSeo(g.slug, year)!),
+    ...getPublishedGuides().map((g) => guideSeo(g.slug)!),
     ...getPublishedPosts().map((p) => postSeo(p.slug)!),
   ];
 }
@@ -223,7 +226,7 @@ export function listAllPages(year = new Date().getFullYear()): PageSeo[] {
  * until its entry is deleted; a listed page whose length changes fails until
  * the entry is updated; a listed path that left the site fails.
  *
- *   const pages = listAllPages(2026);
+ *   const pages = listAllPages();
  *   const enforced = pages.filter((p) => FAMILY_POLICY[p.family].enforceLimits);
  *
  *   const LEGACY_OVER_LIMIT: Record<string, { title?: number; description?: number }> = {

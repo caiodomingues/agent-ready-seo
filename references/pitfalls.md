@@ -22,6 +22,16 @@ page-count strategy.
 computing in another currency or measurement system. It looks like a detail and it
 destroys trust on the first calculation a user checks by hand.
 
+**Machine translation as a page multiplier.** Every page rendered into every
+locale, nothing local behind it. Google's scaled content policy names
+"automated transformations like synonymizing, translating" explicitly. A locale
+earns pages where it has its own data, units, prices or guidance.
+
+**A byline nobody stands behind.** A persona presented as a real expert, a
+generated headshot, or the model credited as author. The first two are what
+Google lists as fabricated authorship; the third tells the reader nothing about
+who checked the text. See `references/foundations.md` (entities and authorship).
+
 **Blocking AI crawlers.** Guarantees never being cited, at the moment the channel
 is growing. If there is a deliberate licensing reason, fine. By accident, through
 a copied `robots.txt`, it is pure loss.
@@ -240,6 +250,10 @@ the code, because the gap between them is the point.
       entity corpora have hubs with coverage floors
 - [ ] Editorial entries are fingerprinted with their code dependencies, and the
       review manifest is current
+- [ ] Bylines name a person or the organization that answers for the text; the
+      decisions on who signs and on saying how content was made are on record
+- [ ] Localized pages exist where the locale has its own data or guidance, not
+      as a translation of every page
 
 ### Structured data
 
@@ -289,7 +303,8 @@ the code, because the gap between them is the point.
 
 - [ ] No doubled site name anywhere
 - [ ] Every page type has a distinct description pattern
-- [ ] Periodic content carries a year token generated at render time, only where it still fits
+- [ ] A year token, where used, is the period the data covers (never the current
+      date), and only where it still fits
 - [ ] Rendered `<title>` is measured from a crawl; the suffix policy per family
       is on record; the length ratchet runs in CI
 - [ ] A tool-shaped title describes what an anonymous visitor actually gets

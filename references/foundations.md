@@ -149,10 +149,15 @@ template on the families that drop it (in Next.js, `title: { absolute }`).
 Pages that keep it must never include it in their own string as well, or the
 name appears twice; that bug hits exactly the pages someone wrote by hand.
 
-**A year token only when it still fits.** Appending `(2026)` is a cheap
-freshness signal on periodic content, and a seven-character surprise on a
-title that was already at the limit. Add it conditionally: only when the title
-carries no year, and only when the result stays within the budget.
+**A year token only when it is true and still fits.** Appending `(2026)` is a
+cheap freshness signal on periodic content, and a seven-character surprise on a
+title that was already at the limit. Take the year from the period the page's
+data covers, never from the clock: a token that advances on 1 January over
+unchanged content is the pattern Google's self-assessment names ("changing the
+date of pages to make them seem fresh when the content has not substantially
+changed"). Add it only when the content has a period, the title carries no
+year, and the result stays within the budget. Where the year comes from is the
+user's decision (see SKILL.md); the data's period is the default.
 
 **Ratchet the limits instead of fixing every page at once.** A test that
 enumerates every page's rendered title and description, fails anything new
@@ -243,6 +248,13 @@ which is what the E-E-A-T guidelines are ultimately measuring.
 Do not invent credentials. An honest short bio outperforms an inflated one the
 moment anyone checks.
 
+**The byline names who answers for the text, not what typed it.** Content
+drafted with an LLM is signed by the person who reviewed it, or by the
+organization; never by the model. A persona whose byline reads as a real expert
+is what Google lists as fabricated authorship, alongside AI-generated headshots
+and invented credentials. Who signs, and whether pages say how they were made,
+are the user's decisions (see SKILL.md).
+
 **Content written by an agent still needs a cadence.** When the blog is authored
 through an LLM tool rather than a CMS, nothing forces publication to happen.
 Put the rhythm somewhere visible (a schedule on the content object, a recurring
@@ -259,6 +271,12 @@ review. Give each entry a review period too (dated analyses shorter than
 evergreen guides), so a quiet quarter also fails. Recording a review takes an
 explicit date, never "now", because the date is itself a claim. Worked
 implementation: `templates/generic/content-review.js`.
+
+**The review covers what the engine shows, not only the body.** Title, meta
+description, structured data and image alt text drafted by a model are claims
+in search results and in answers, and need the same fact check as the article.
+Keep them inside the string each entry hashes, so a changed alt text or a
+regenerated description counts as an edit.
 
 ---
 
