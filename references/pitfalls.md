@@ -32,13 +32,24 @@ generated headshot, or the model credited as author. The first two are what
 Google lists as fabricated authorship; the third tells the reader nothing about
 who checked the text. See `references/foundations.md` (entities and authorship).
 
-**Blocking AI crawlers.** Guarantees never being cited, at the moment the channel
-is growing. If there is a deliberate licensing reason, fine. By accident, through
-a copied `robots.txt`, it is pure loss.
+**Blocking AI search and user fetchers.** Disallowing the search and
+user-triggered tokens guarantees never being cited, at the moment the channel
+is growing. By accident, through a copied `robots.txt`, it is pure loss.
+Blocking only the training tokens is a separate decision with a separate cost,
+and it is the user's (see SKILL.md and the roles in `references/foundations.md`).
 
 **Fabricated ratings.** Aggregate rating markup with no real reviews behind it.
-The upside is stars in a result; the downside is losing rich results everywhere,
-permanently.
+The upside is stars in a result; the downside is a structured-data manual
+action, which removes rich-result eligibility on the affected pages, part of
+the site or all of it, until the markup is fixed and a reconsideration request
+is accepted. Google says it does not affect ranking; it takes the stars and
+every other rich result with them.
+
+**Site reputation and expired domains.** Third-party content published on a
+host mainly to borrow its ranking signals is what Google's site reputation
+policy targets. Buying an expired domain to host unrelated, low-value content
+on its old reputation is expired domain abuse. Both are in Google's spam
+policies; neither is a shortcut for a new content program.
 
 **Gating everything behind a login.** No public surface means no citable page and
 nothing to rank. Even a data-heavy product can publish aggregates. See the free
@@ -111,8 +122,18 @@ applications) and `templates/next/gated-app-404.ts`.
 **An edge toggle overriding `robots.txt`.** A CDN's "block AI bots" or
 "AI labyrinth" switch blocks the named crawlers at the edge, and nothing in the
 repository changes. The allow rules are still emitted, still reviewed, still
-wrong. Test with the user agent from outside (`curl -A GPTBot`), not by reading
-the file, and record the dashboard setting next to the robots source.
+wrong. Test with the user agent from outside (`curl -A OAI-SearchBot`,
+`curl -A bingbot`), not by reading the file, and record the dashboard setting
+next to the robots source. A WAF that drops `bingbot` also drops Copilot,
+which reads Bing's index.
+
+**An inherited `noarchive` or `nosnippet`.** A robots meta value set once in a
+shared layout or a paywall template reaches every page. On Bing, `noarchive`
+means "Do not link in Chat and Copilot"; on Google, `nosnippet` keeps the page
+out of AI Overviews and AI Mode as a direct input, and `max-snippet:0` is the
+same rule. Nothing breaks visibly; the citations stop. Read the rendered meta
+and the `X-Robots-Tag` header on a page meant to be cited. See
+`references/foundations.md`.
 
 **A root-level canonical that cascades.** In frameworks where page metadata
 inherits from the layout, a canonical declared at the root is inherited by
@@ -213,8 +234,14 @@ the code, because the gap between them is the point.
 
 - [ ] One canonical host, the other permanently redirected, only the canonical form emitted anywhere
 - [ ] `robots.txt` blocks the application area and nothing public
-- [ ] AI crawlers explicitly allowed, list still current, and confirmed from
-      outside with `curl -A <bot>` (an edge toggle can override the file)
+- [ ] AI search and user-fetch tokens explicitly allowed, list still current,
+      and confirmed from outside with `curl -A <bot>`, `bingbot` included (an
+      edge toggle can override the file); training tokens follow the user's
+      recorded decision
+- [ ] Search Console's "Search generative AI" setting is on include, and any
+      CDN-managed robots.txt or content signal is known and matches the decision
+- [ ] No inherited `noarchive` or `nocache` (Bing), and no `nosnippet` or
+      `max-snippet:0` (Google), on pages meant to be cited
 - [ ] A random unknown path returns 404, not a redirect to login or an app shell
 - [ ] Social image route reachable despite any `/api/` block
 - [ ] The framework's asset path (`/_next/`, `/static/`, `/assets/`) is not disallowed
@@ -332,6 +359,8 @@ the code, because the gap between them is the point.
 - [ ] Every title or template change has a row in the experiment register, a
       baseline taken before the deploy, and arms decided in one module
 - [ ] Console reads exclude the deploy day and split hosts
+- [ ] AI visibility is read from Search Console's generative AI report and
+      Bing Webmaster Tools' AI Performance, not inferred from referrals
 
 ### Citable data
 
@@ -341,7 +370,7 @@ the code, because the gap between them is the point.
 - [ ] A public methodology page states sources, limitations and how to cite
 - [ ] The index has published on schedule for every period since launch
 - [ ] Each publication pings IndexNow after the deploy is live, and the sitemap
-      `lastmod` carries the period's date for Google
+      `lastmod` carries the period's date for Google and Bing
 
 ### Claims
 

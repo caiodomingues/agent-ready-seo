@@ -43,8 +43,12 @@ so the class of bug cannot exist.
 **Emit it in the server HTML.** JSON-LD that a client script adds after load
 (in Next.js, `next/script` with `strategy="afterInteractive"`, or any
 `useEffect` injection) is missing from the HTML that answer-engine fetchers
-read. Render a plain `<script type="application/ld+json">` from a server
-component. To check, count the `application/ld+json` tags in the `curl`
+read. Google is the exception that renders: it reads structured data
+"available in the DOM when it renders the page", but it warns that for
+`Product`, dynamically generated markup "can make Shopping crawls less frequent
+and less reliable". So injected markup works on Google, late, and is absent
+for every fetcher that does not run JavaScript. Render a plain
+`<script type="application/ld+json">` from a server component. To check, count the `application/ld+json` tags in the `curl`
 output and compare against a rendered page. In Next.js, an injected block
 leaves no tag in the raw HTML. It shows up only as serialized props
 (`"strategy":"afterInteractive"`) inside the RSC payload. After render, it
@@ -153,8 +157,11 @@ declared price and the charged price cannot diverge.
 ### Review and AggregateRating
 
 **Only with real reviews.** Star markup is tempting precisely because it is
-visible in results, which is why fabricated ratings are policed hard and why the
-penalty is loss of rich results across the whole site.
+visible in results, which is why fabricated ratings are policed hard. The
+penalty is a structured-data manual action: the affected pages, which can be
+part of the site or all of it, lose rich-result eligibility until the markup is
+fixed and a reconsideration request is accepted. Google says it does not
+affect ranking.
 
 Two specific rules:
 

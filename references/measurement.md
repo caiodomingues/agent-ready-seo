@@ -8,8 +8,9 @@ see than it looks.
 ## Set expectations before instrumenting
 
 Organic search responds over months, not weeks. Citation in generative answers is
-slower still and, for most sites, is not directly observable at all. Any report
-produced in the first six weeks measures construction, not results.
+slower still, and only partly observable: Google and Bing now report it for
+their own AI features (below), and every other assistant reports nothing. Any
+report produced in the first six weeks measures construction, not results.
 
 Say this out loud at the start. A team that expects a traffic curve in week two
 concludes the work failed exactly when the pages are being indexed.
@@ -19,6 +20,8 @@ What is legitimately observable early:
 - Indexing and coverage (pages known, pages excluded, and why)
 - Impressions on the new page types, before clicks arrive
 - Crawl activity from AI user agents in server logs
+- Impressions in Google's AI features and citations in Copilot, from the two
+  consoles' AI reports
 - Referrals from AI hosts, partially, with the caveats below
 
 ---
@@ -32,6 +35,13 @@ parameter, nothing distinguishing it from someone typing the URL.
 **Attribution windows are long.** Someone hears about you inside a conversation,
 does not click, and searches your name three days later. That arrives as branded
 organic search, and no amount of instrumentation attributes it to the assistant.
+
+**AI answers inside a search engine arrive as search.** A click from an AI
+Overview arrives as a Google referral, and a click from an AI summary in Bing's
+results as a Bing referral, indistinguishable from the blue links. Microsoft's
+own Clarity counts only the standalone assistants and says AI features embedded
+in search engines are not included. The consoles' AI reports below are the only
+view of that share.
 
 **Link behavior changes without notice.** In 2026 the largest assistant began
 converting brand mentions into inline links to the brand's **home page**, so a
@@ -150,6 +160,25 @@ property is added, even before verification, and shows nothing earlier. Beyond c
 Impressions before clicks is the normal, healthy sequence. Judge the first months
 on impressions and average position, not on sessions.
 
+**The generative AI report.** Search Console has a separate performance report
+for AI Overviews and AI Mode (and one for Discover's generative features),
+rolled out to all sites on 31 August 2026. It shows impressions only, by
+pages, countries, devices and dates; no clicks, no position. Google says the
+same data "is included in the overall performance report", and an AI Overview
+"occupies a single position in search results, and all links in the AI
+Overview are assigned that same position." So a page that starts or stops
+appearing in an AI Overview moves average position and click-through in the
+main report without any change to its blue link. During a title experiment,
+read both: an arm whose AI impressions shifted is not comparable on position
+or CTR alone.
+
+**Bing's AI Performance.** Bing Webmaster Tools reports citations across
+Copilot, the AI summaries in Bing's results and partner experiences: cited
+pages, and the grounding queries that retrieved them. Bing says the data
+"represents a sample of overall citation activity", and that a citation is not
+a click or a visit. Read it for trends and for which pages get cited, not as
+a count.
+
 **Practicalities of the export that bite on the first read:**
 
 - The console's day boundary is Pacific time. A deploy in the evening of a
@@ -239,6 +268,12 @@ logs by the user agents listed in `references/foundations.md` and look for:
 This is one of the few places where the effect is observable in weeks rather than
 months. It also catches the embarrassing failure directly: an agent requesting the
 convention you documented and receiving 404s.
+
+User agent strings are spoofable, so confirm the claim before counting it.
+Bingbot is verified by reverse DNS: the IP resolves to a name ending in
+`search.msn.com`, and a forward lookup of that name returns the same IP.
+Google documents its own verification for Googlebot, and most AI operators
+(OpenAI, Perplexity, Amazon, Mistral) publish the IP ranges their bots use.
 
 ---
 

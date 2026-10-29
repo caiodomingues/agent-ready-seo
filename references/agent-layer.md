@@ -24,6 +24,16 @@ attributes. Three consequences, in order of how much they cost you:
 Markdown specifically, rather than plain text, because headings, lists and tables
 survive as structure a model can use, at almost no token cost.
 
+**Who it is for.** Google says you "don't need to create new machine readable
+files, AI text files, markup, or Markdown to appear in Google Search (including
+its generative AI capabilities), as Google Search itself doesn't use them", and
+that an `llms.txt` "will neither harm nor help" because "Google Search ignores
+them." The layer serves the other agents: assistants that fetch a page
+themselves, and pipelines that ingest a site. AI Overviews and AI Mode read the
+HTML page Googlebot crawled. Keep the canonical stitching anyway, because
+Google still crawls and can index any file it finds, and other engines index
+too.
+
 ---
 
 ## The contract
@@ -122,7 +132,9 @@ channels are split:
 `X-Robots-Tag: all` on the markdown response is deliberate and not a contradiction:
 it says "you may index this if you find it", while the canonical says "but credit
 the HTML page". Blocking the twin with `noindex` would also stop some AI fetchers
-from using it, which defeats the purpose.
+from using it, which defeats the purpose. Bing is one: it says to use `noindex`
+when a URL should not appear in "Bing search, Copilot experiences, or grounding
+API results."
 
 Two deviations teams choose on purpose, and the trade they are making:
 
@@ -130,10 +142,13 @@ Two deviations teams choose on purpose, and the trade they are making:
   every article on the same origin, and unlike a twin it has no single page to
   canonical to. Some sites accept that a bulk-ingestion pipeline does not care
   about the robots header and mark just that file `noindex`, keeping `all` on
-  the per-page twins. Defensible; say so in a comment next to the header.
+  the per-page twins. Defensible; say so in a comment next to the header. The
+  cost: the file also leaves Bing's index, and with it Copilot's grounding.
 - **`llms.txt` inside the sitemap.** Strictly a text file for agents, but on a
   site where no page links to it, the sitemap is its only discovery path for a
-  search crawler. Harmless as long as `llms-full.txt` stays out.
+  search crawler. That buys nothing on Google, which ignores the file for
+  Search; the case for it is Bing, whose index also grounds Copilot. Harmless
+  as long as `llms-full.txt` stays out.
 
 ### 4. Cache it
 
@@ -171,6 +186,17 @@ Four requirements to be compliant:
 holds only a URL string, cannot set headers, or is following a link someone
 pasted into a conversation. Negotiation works for an agent that fetches properly
 and should never have to guess at a URL shape. Neither subsumes the other.
+
+**The edge alternative.** Cloudflare's Markdown for Agents converts the HTML
+response to markdown at the edge when the request sends
+`Accept: text/markdown`, with no origin code. It is negotiation only (no `.md`
+suffix, no twin registry), and it converts the origin's HTML rather than a
+source written for agents, so read its output for leftover navigation and
+banners before relying on it. It also states a preference
+on your behalf: when the origin sends no `Content-Signal` header, it adds
+`Content-Signal: ai-train=yes, search=yes, ai-input=yes`. An origin header is
+preserved, so send one if the user has decided otherwise (see the training
+decision in SKILL.md).
 
 **The cost, stated plainly.** `Vary: Accept` splits the CDN cache by Accept
 header, and browsers send long Accept strings that differ between vendors and
@@ -292,6 +318,18 @@ check the deployed response; a local production build does not reproduce the
 platform's preloads. In Next.js, a `Link` set in the middleware reaches the
 wire on the HTML response, unlike `Vary`.
 
+**`describedby` to the map.** llmstxt.org recommends a second relation next to
+`alternate`: `rel="describedby"` pointing to the `llms.txt` that covers the
+page. It works as a `<link>` element and as a `Link` header, and the header
+form also fits the markdown files themselves, which have no `<head>`:
+
+```
+Link: <https://example.com/guides/onboarding.md>; rel="alternate"; type="text/markdown", <https://example.com/llms.txt>; rel="describedby"
+```
+
+`describedby` is a registered relation. Point it at the map that actually
+lists the page: the root one, or the section map when the map is split.
+
 **The URL pattern itself.** Documented in `llms.txt` with worked examples, so an
 agent can generalize instead of enumerating.
 
@@ -304,7 +342,9 @@ agent can generalize instead of enumerating.
 
 Two distinct consumption modes. An agent browsing wants the map and will fetch
 the one page it needs. A pipeline doing bulk ingestion wants a single file and no
-crawl.
+crawl. Only the first is in the llmstxt.org proposal; `llms-full.txt` is a
+community convention that grew next to it, so treat its shape as yours to
+define and its readers as fewer.
 
 **Give `llms.txt` a budget too, a much smaller one.** The map is read at the
 start of a task, often in full, before the agent knows which page it needs.
@@ -317,7 +357,9 @@ into the hub twins the map already links. Enforce it where the file is
 generated: measure the output and fail the build past the budget. A budget that
 is only written in a document is exceeded within a quarter. If the map cannot
 fit without dropping whole sections, splitting it per section is an option;
-that one is the user's decision (see SKILL.md).
+that one is the user's decision (see SKILL.md). The proposal allows it: an
+`llms.txt` "describes all pages under its path", so `/docs/llms.txt` covers
+`/docs/`.
 
 **Give `llms-full.txt` a byte budget.** Its reader is a context window. Around
 300 KB of prose is roughly 75k tokens, and past that the
@@ -370,7 +412,9 @@ file at worst. The same applies to a page written for AI assistants
 dated where it changes and linked to its evidence. Generate it from the same
 source as the page it summarizes. A claim with no published method behind it
 (a benchmark, "independent audit", "preferred by 100%") stays out until the
-method page exists.
+method page exists. Engines also police it: Bing's webmaster guidelines list
+"Prompt Injection and AI Manipulation" as abuse that "may result in reduced
+visibility or removal from search experiences."
 
 **Never promise capability you do not have.** A common self-inflicted wound: the
 map says "every page answers at URL + .md" while page types added later have no
@@ -387,10 +431,10 @@ this table is what to tell them when they ask.
 | File | What it is for | Worth it when |
 | --- | --- | --- |
 | `pricing.md` | Plans and prices as markdown | Pricing is public. Generate it from the same source as the pricing page; a thin or stale copy scores worse than none |
-| `agents.md` at the root | Instructions for agents acting on the site | The site has something an agent can *do* beyond reading. For a content site it repeats `llms.txt` |
+| `agents.md` at the root | Not a website file. AGENTS.md is "A simple, open format for guiding coding agents": a README for agents that work in a code repository | Rarely, on a website. It belongs in the product's code repository; published on the site it repeats `llms.txt`, and a scanner probing for it there is checking a repository convention |
 | `/.well-known/agent-skills/index.json` | Index of published agent skills, with digests | You publish an official skill for your product |
 | `/.well-known/ard.json` (formerly `ai-catalog.json`) | Catalog of the site's agent-facing resources | You have more than one such resource (an API, an MCP server, a skill) to catalog |
-| `schemamap:` in `robots.txt` | NLWeb feed of structured data | You run an NLWeb `/ask` endpoint, which is product work |
+| `schemamap:` in `robots.txt` | Points to a Schema Map, an index of Schema Feed files that aggregate the site's structured data, from the NLWeb project's Schema Feeds spec (version 0.1, a draft proposal) | A consumer you care about reads it. Until then it is a second copy of every JSON-LD block, on a draft that can still change |
 | `?mode=agent` | A dedicated agent view of the page | Never, when the `.md` twin and negotiation exist: it is a third rendering of the same text |
 
 The rule that applies to all of them is the one above: each file is a promise.

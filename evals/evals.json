@@ -50,7 +50,7 @@
     {
       "id": 4,
       "prompt": "I want to generate a pricing guide page for every combination of our 20 business segments and all 30 regions we cover. That's 600 pages. Good idea?",
-      "expected_output": "Should apply the one test: does each page answer something only we can answer. Should flag segment x region as an intersection axis where coverage collapses quietly, and require a coverage floor per cell with 404 below it, the same constant gating the hub and the sitemap. Should warn that 600 pages in one day looks like mass generation and propose date-gated publication, noting that a build-time sitemap does not see the date pass. Should ask what per-cell data exists and suggest measuring near-duplicate overlap. Should require real inbound links from a hub and siblings, and describe what makes instances genuinely differ (seeded tool, benchmarks, segment-specific mistakes, a dated data block).",
+      "expected_output": "Should apply the one test: does each page answer something only we can answer. Should flag segment x region as an intersection axis where coverage collapses quietly, and require a coverage floor per cell with 404 below it, the same constant gating the hub and the sitemap. Should note that Google judges purpose and value rather than publishing rate, warn that shipping 600 pages in one day is still a bad idea for operational reasons (nobody reviews them well, indexing arrives in an unreadable trickle), and propose date-gated publication, noting that a build-time sitemap does not see the date pass. Should ask what per-cell data exists and suggest measuring near-duplicate overlap. Should require real inbound links from a hub and siblings, and describe what makes instances genuinely differ (seeded tool, benchmarks, segment-specific mistakes, a dated data block).",
       "assertions": [
         "Applies the 'only we can answer' test before the template",
         "Identifies the intersection axis and requires a per-cell coverage floor with 404",
@@ -144,6 +144,20 @@
         "Removes the /_next/ disallow and explains the robots-compliant renderer effect",
         "Rewrites /ai-instructions as dated facts with no directives to the model",
         "Verifies per user agent with curl against production, not by reading code"
+      ],
+      "files": []
+    },
+    {
+      "id": 11,
+      "prompt": "Our pages used to show up as sources in Google's AI Overviews and in Copilot answers, and over the last two months that mostly stopped. Organic rankings look about the same. Last quarter we added an llms.txt and markdown versions of every page, moved behind a CDN with bot protection, and reused the article template from our paywalled newsletter. What happened, and how do we get the citations back?",
+      "expected_output": "Should read references/foundations.md (robots, snippet and archive rules) and references/measurement.md, and check the deployed site rather than the code. Should check the Search Console 'Search generative AI' setting under Settings (default include; exclude removes the site from AI Overviews, AI Mode and Discover's generative features without touching rankings). Should check the rendered robots meta and X-Robots-Tag on cited pages for nosnippet or max-snippet:0, which keep a page out of AI Overviews and AI Mode as a direct input, and for an inherited noarchive or nocache from the paywall template, which on Bing removes or reduces Copilot citations. Should confirm from outside that Googlebot and bingbot are not blocked or challenged by the CDN, since AI Overviews follow Googlebot and Copilot reads Bing's index, and check whether the CDN manages robots.txt or adds a content signal. Should state that llms.txt and the markdown twins have no Google Search effect, so they neither caused nor fix the AI Overviews drop. Should measure with Search Console's generative AI performance report and Bing Webmaster Tools' AI Performance (sampled citations, not clicks) rather than referrals, which arrive as ordinary search traffic.",
+      "assertions": [
+        "Checks the Search Console 'Search generative AI' setting is on include",
+        "Checks rendered meta and X-Robots-Tag for nosnippet or max-snippet:0 and explains the AI Overviews effect",
+        "Checks for an inherited noarchive or nocache and explains the Copilot effect on Bing",
+        "Confirms from outside that Googlebot and bingbot reach the pages through the CDN",
+        "States that llms.txt and markdown twins have no Google Search effect",
+        "Measures with the generative AI performance report and Bing AI Performance, not referrals"
       ],
       "files": []
     }

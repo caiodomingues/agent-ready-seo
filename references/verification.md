@@ -96,7 +96,10 @@ curl -s $SITE/sitemap.xml | grep -c "\.md</loc>"          # expect 0
 # Crawl rules, including the image route under a blocked prefix
 curl -s  $SITE/robots.txt
 curl -sI $SITE/api/og?title=test | head -1                 # expect 200
-curl -sI -A "ChatGPT-User" $SITE/ | head -1                # edge rules can block by UA
+curl -sI -A "OAI-SearchBot" $SITE/ | head -1              # edge rules can block by UA
+curl -sI -A "bingbot" $SITE/ | head -1                    # a blocked bingbot also loses Copilot
+curl -s $SITE/guides/onboarding | grep -ioE '<meta[^>]*name="(robots|bingbot|googlebot)"[^>]*>'   # no nosnippet, noarchive, nocache
+curl -sI $SITE/guides/onboarding | grep -i "^x-robots-tag"                  # same rules as a header
 curl -s $SITE/robots.txt | grep -iE "disallow:\s*/(_next|static|assets)"   # expect nothing
 
 # Metadata in <head> per agent, on a dynamic route
@@ -357,4 +360,8 @@ Months, not weeks. See `references/measurement.md` for the detail.
   layer is being consumed, and the fastest of the slow signals. It also catches
   the embarrassing failure directly: an agent requesting the convention you
   documented and receiving 404s.
+- **AI feature reports.** Search Console's generative AI report (impressions
+  in AI Overviews and AI Mode) and Bing Webmaster Tools' AI Performance
+  (sampled citations in Copilot and Bing's AI summaries). Citations and
+  impressions, not clicks.
 - **Referring domains on a badge route,** if you publish one.

@@ -35,7 +35,12 @@ are avoiding one while building the other.
 **Thin content:** a templated page whose unique portion is a few substituted
 words. It answers nothing a generic page would not answer. At volume, Google's
 spam policies call it *scaled content abuse*: many pages generated primarily
-to manipulate rankings rather than to help, whatever produced them.
+to manipulate rankings rather than to help, whatever produced them. Google's
+AI optimization guide extends it to answer engines: separate content "for every
+possible variation of how people might search (... fan-out queries)", made
+primarily to manipulate rankings or generative AI responses, "violates
+Google's scaled content abuse spam policy." A page per phrasing of one question
+is that.
 
 **Doorway page:** the same page duplicated across a dimension (usually
 geographic) with no dimension-specific substance, existing to capture "X in
@@ -166,7 +171,10 @@ Concrete devices, cheapest first:
   generated?" a reader of automated content asks, which Google's guidance on
   generated content asks sites to answer where it is reasonably expected, and
   the line is itself quotable. Showing it is the default, and the user's call
-  (see SKILL.md).
+  (see SKILL.md). Merchants have no choice on part of it: Google says
+  "AI-generated images must contain metadata using the IPTC
+  DigitalSourceType TrainedAlgorithmicMedia", and AI-generated product titles
+  and descriptions must be specified separately and labeled as AI-generated.
 
 ---
 
@@ -186,7 +194,7 @@ unpredictable trickle you cannot read. Two practices, both worth doing:
 
 ```ts
 // publishDate is a date only (YYYY-MM-DD), compared in the site's timezone.
-const SITE_TZ = "America/Sao_Paulo";
+const SITE_TZ = "Europe/Berlin";
 
 export function getPublished<T extends { publishDate?: string }>(all: T[]): T[] {
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: SITE_TZ }).format(new Date());

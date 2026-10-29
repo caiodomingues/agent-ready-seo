@@ -2,7 +2,7 @@
 name: agent-ready-seo
 description: Use when a site needs to be readable and citable by AI answer engines as well as search crawlers. Covers the markdown twin layer, llms.txt, structured data, programmatic pages backed by real data, publishing a citable dataset, and attributing AI referrals. Also use when the user mentions "AEO", "GEO", "answer engine optimization", "generative engine optimization", "llms.txt", "llms-full.txt", "markdown version of my pages", "get cited by ChatGPT", "AI search traffic", "AI crawlers", "JSON-LD", "structured data", "Dataset schema", "programmatic SEO", "thin content", "doorway pages", "comparison page", "vs page", "alternatives page", "sitemap", "canonical", "IndexNow", "title tag", "CTR", "click-through rate", "Search Console", "title experiment", "AI-generated content", "byline", "agent readiness score", "is-agentic", "WebMCP", or "where is my AI traffic coming from". For persuasion and page copy see copywriting; for classic on-page issue hunting see seo-audit.
 metadata:
-  version: 1.5.1
+  version: 1.6.0
 license: MIT
 ---
 
@@ -80,6 +80,9 @@ backwards: writing a hundred pages before having anything different to say.
    not answer something only you can answer, it should not exist.
 6. **Add the agent layer.** Text version, `llms.txt`, canonical stitching the two.
    Do it after the base is ready, because it mirrors content that already exists.
+   It serves agents other than Google: Google says Search, its AI features
+   included, does not use `llms.txt` or markdown files, so it has no Google
+   Search effect in either direction. Keep the canonical stitching anyway.
 7. **Instrument before expecting results.** First-touch attribution and search
    console configured before traffic arrives, or the first months are lost data.
    Verify the layer against production, and consider an external scorer as a
@@ -108,9 +111,10 @@ rest of the work.
   repeated with your name attached.
 - **Emit `lastmod` only when a real content date backs it.** A per-deploy
   timestamp teaches crawlers to distrust the field entirely. Absent beats false.
-- **Let AI crawlers in, on purpose.** Blocking them guarantees you are never
-  cited, at the exact moment that channel is growing. If the strategy is to be
-  the source, the reader has to be allowed in.
+- **Let AI search and user fetchers in, on purpose.** Blocking them guarantees
+  you are never cited, at the exact moment that channel is growing. If the
+  strategy is to be the source, the reader has to be allowed in. Training-only
+  tokens are a separate question, and the user's (see the decisions below).
 - **Publish the aggregate, gate the live.** Dated snapshots, methodology and
   educational material are what get cited; per-user, current and personalized
   data is what people pay for. That line is also what keeps a data business from
@@ -119,7 +123,8 @@ rest of the work.
   that separates programmatic SEO from doorway pages, and it applies before the
   template is written, not after the penalty.
 - **No invented ratings, no fabricated review counts.** Aggregate rating markup
-  without real reviews is the fastest way to lose rich results permanently.
+  without real reviews earns a manual action that removes rich results from part
+  of the site or all of it, until a fix and a reconsideration request.
 - **An unknown path answers 404, even behind an auth gate.** A default-deny
   middleware that redirects everything to a 200 login page tells every agent
   that every URL exists. Keep the deny; distinguish "gated" from "nothing".
@@ -151,7 +156,8 @@ default.
 | **Serve markdown to known AI user agents even without `Accept: text/markdown`?** | Select by `Accept` only / also by user agent | **`Accept` only.** It is the signal the client controls and states. Selecting by user agent makes one URL answer differently by who claims to be asking, depends on a bot list that goes stale, and edges toward what search engines police as cloaking. |
 | **Where does the year in a title come from?** | The period the page's data covers / no year at all / the current calendar year | **The data's period**, and no token on a page whose content has none. A year that advances on 1 January over unchanged content is what Google's own self-assessment names as faking freshness, and the title then promises data the page does not have. Dropping the year costs only the freshness cue. See `references/foundations.md` (titles). |
 | **Who signs content drafted with an LLM?** | The person who reviewed it and answers for it / the organization / a persona | **The person who reviewed it**, or the organization when no one will put a name on it. Never the model: Google calls an AI byline "probably not the best way" to show AI was involved. A persona is a brand call, but a byline that reads as a real expert who does not exist is what Google lists as fabricated authorship (made-up names, AI-generated headshots, false credentials). A mascot presented as a mascot is not that. |
-| **Say how generated content was made?** | A short note on pages where a reader would ask "how was this made?" / one site-wide page on how content is produced, linked from those pages / nothing | **The note, where a reader would ask:** programmatic pages and articles substantially drafted by a model. Google asks for it "when it would be reasonably expected" and documents no penalty for leaving it out, so this is a trust choice, not a compliance one. Written as method (source, count, snapshot date) rather than as an "AI" label, it is also a line an answer engine quotes. Cost: a line of copy per page family, and some audiences discount anything that mentions a model. See `references/pseo.md`. |
+| **Say how generated content was made?** | A short note on pages where a reader would ask "how was this made?" / one site-wide page on how content is produced, linked from those pages / nothing | **The note, where a reader would ask:** programmatic pages and articles substantially drafted by a model. Google asks for it "when it would be reasonably expected" and documents no penalty for leaving it out, so this is a trust choice, not a compliance one, except for merchants: Google requires IPTC `TrainedAlgorithmicMedia` metadata on AI-generated product images and labeled AI-generated product titles and descriptions. Written as method (source, count, snapshot date) rather than as an "AI" label, it is also a line an answer engine quotes. Cost: a line of copy per page family, and some audiences discount anything that mentions a model. See `references/pseo.md`. |
+| **Opt out of model training, and say so in machine-readable form?** | Allow (no training disallows, no preference line) / disallow the training tokens in `robots.txt` / also publish a `Content-Signal` line | **Allow, and publish no preference line.** Both vocabularies define absence as no preference (Cloudflare: "the absence of a signal conveys no meaning"; the IETF aipref vocabulary assigns "unknown"), and aipref is still an Internet-Draft. A training opt-out does not remove citations from OpenAI, Anthropic, Apple or Google Search, but on Bing the only full training opt-out, `noarchive`, also removes Copilot citations (`nocache` limits both to URL, title and snippet). Before asking, check whether the CDN already states a preference for the user: Cloudflare's managed robots.txt can add `ai-train=no`, and Markdown for Agents adds `ai-train=yes` when the origin sends none. See `references/foundations.md` (robots). |
 | **Go after the scorer's product layers** (public API, OpenAPI, MCP server, OAuth, an SDK, agent payments)? | Out of scope for this work / plan it as product work | **Out of scope.** These are product decisions with their own cost, not publishing fixes. Record them in the scan notes so the gap is known, and do not build any of it as part of an SEO task. |
 | **Which external score to track over time?** | The applicability-weighted report / the per-question breakdown / both | **Applicability-weighted, failed check IDs recorded.** The per-question view counts product layers this skill leaves out. See `references/verification.md`. |
 

@@ -325,7 +325,8 @@ Treat it as an editorial commitment with three parts, and automate what you can:
 2. **Publish** the period's page and a short written analysis. A post per period,
    generated from the numbers and then edited, both feeds the news-shaped queries
    and creates the internal links the index pages need.
-3. **Notify** the engines that accept it rather than waiting for a crawl. See
+3. **Notify** the engines that accept it rather than waiting for a crawl, with
+   the period's new and changed URLs only, not the whole sitemap. See
    IndexNow in `references/foundations.md`, which matters more here than anywhere
    else: dated content that gets crawled late is stale on arrival. Google is not
    among them, so the dated `lastmod` and the link from the hub carry it there.

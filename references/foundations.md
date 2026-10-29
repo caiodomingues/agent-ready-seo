@@ -39,10 +39,16 @@ lastModified: new Date()
 A per-deploy timestamp on a site that deploys daily claims the entire site
 changes daily. It is false, it is detectable, and it teaches crawlers to ignore
 the field for your domain. An absent `lastmod` is valid and better: the crawler
-falls back to its own heuristics.
+falls back to its own heuristics. Google says it uses `lastmod` "if it's
+consistently and verifiably (for example by comparing to the last modification
+of the page) accurate", and counts a change to the main content, the
+structured data or the links as significant, a changed copyright year as not.
+Bing says an accurate `lastmod` and a stable `ETag` help it detect changes
+more reliably.
 
-`changefreq` and `priority` are weak-to-ignored signals. Setting them is harmless;
-believing in them is not. Spend the effort on `lastmod` correctness instead.
+Google says it "ignores `<priority>` and `<changefreq>` values." Setting them
+is harmless; believing in them is not. Spend the effort on `lastmod`
+correctness instead.
 
 **Filter by publication state** using the same function the routes use, so the
 sitemap can never advertise a page that 404s.
@@ -64,34 +70,64 @@ allow, both so the intent is visible in review and so a future blanket rule does
 not catch them by accident. A crawler that matches a named group ignores the
 `*` group (RFC 9309), so repeat the application disallows inside it.
 
+Each operator separates the jobs, so the list is organized by role. This list
+is the source of truth; `templates/next/robots.ts` mirrors it.
+
 ```
-User-agent: GPTBot
+# Search and citation: what puts the site in an AI answer
 User-agent: OAI-SearchBot
-User-agent: ChatGPT-User
-User-agent: ClaudeBot
 User-agent: Claude-SearchBot
-User-agent: Claude-User
 User-agent: PerplexityBot
+User-agent: Amzn-SearchBot
+User-agent: MistralAI-Index
+User-agent: DuckAssistBot
+# User-triggered fetches: a person asked the assistant to read the page
+User-agent: ChatGPT-User
+User-agent: Claude-User
 User-agent: Perplexity-User
+User-agent: meta-externalfetcher
+User-agent: Amzn-User
+User-agent: MistralAI-User
+# Training only: no effect on citation
+User-agent: GPTBot
+User-agent: ClaudeBot
 User-agent: Google-Extended
 User-agent: Applebot-Extended
 User-agent: CCBot
+User-agent: meta-externalagent
+User-agent: Amazonbot
+User-agent: MistralAI-Training
 Allow: /
 Disallow: /dashboard/
 Disallow: /api/
 Allow: /api/og
 ```
 
-Each operator separates the jobs. For OpenAI, `GPTBot` is training,
-`OAI-SearchBot` decides inclusion in ChatGPT search, which is where citations
-come from, and `ChatGPT-User` is a fetch a person triggered, for which OpenAI
-says robots rules "may not apply". Anthropic splits the same way: `ClaudeBot`,
-`Claude-SearchBot` and `Claude-User`. Blocking the search token is what
-guarantees you are never cited. Blocking only the training token is a separate
-choice with a separate cost. If the plan is to be the source, the search and
-user fetchers have to be allowed in. The tokens change, so re-check the
-operators' pages when revisiting the file. `templates/next/robots.ts` carries
-the same list.
+- **Search and citation.** These decide whether the site can appear, linked,
+  in the operator's answers. Blocking one is what guarantees you are never
+  cited there. DuckDuckGo says DuckAssistBot data "is not used in any way to
+  train AI models." Googlebot, Bingbot and Applebot do this job for their
+  operators through their normal groups: AI Overviews and AI Mode follow
+  Googlebot's rules, and Copilot reads Bing's index.
+- **User-triggered fetches.** Allow them, and treat their robots compliance
+  as advisory: OpenAI says robots rules "may not apply" to ChatGPT-User, and
+  Perplexity says its user fetcher "generally ignores robots.txt rules", while
+  Anthropic says disallowing Claude-User stops those retrievals.
+- **Training only.** These do not affect citation. `Google-Extended` and
+  `Applebot-Extended` are control tokens, not crawlers: Google says
+  Google-Extended "does not impact a site's inclusion in Google Search nor is
+  it used as a ranking signal" and has no HTTP user agent of its own, so
+  `curl -A Google-Extended` tests nothing; Apple says Applebot-Extended "does
+  not crawl webpages" and that pages disallowing it "can still be included in
+  search results."
+
+The default is all three groups allowed, as above. Opting out of training is
+the user's decision (see SKILL.md); a yes moves the training tokens into a
+group of their own with `Disallow: /` and leaves the other two untouched.
+OAI-AdsBot also exists: OpenAI uses it only on landing pages submitted as ads,
+and says its data is not used for training. Operators take time to apply a
+change, about 24 hours for OpenAI and 72 for DuckDuckGo. The tokens change,
+so re-check the operators' pages when revisiting the file.
 
 **3. Watch for over-broad blocks catching useful routes.** The classic case: a
 blanket `Disallow: /api/` that also blocks the dynamic social-image endpoint, so
@@ -111,14 +147,46 @@ disallow the asset path.
 
 **4. Check that the edge agrees.** A CDN "block AI bots" or "AI labyrinth"
 toggle overrides the file silently: the allow rules keep shipping and the bots
-never arrive. Verify from outside with the user agent (`curl -A GPTBot`), and
+never arrive. Microsoft documents no separate AI crawler: it says Bing and
+Copilot rely on the same crawling and indexing foundation, so a WAF rule that
+drops `bingbot` also removes the site from Copilot's citations. Verify from
+outside with the user agents (`curl -A OAI-SearchBot`, `curl -A bingbot`), and
 keep a note of the dashboard setting next to the robots source so the next
 audit knows to look there.
+
+Two more switches remove the site without touching the file. On Cloudflare,
+managed robots.txt prepends its own block to yours (a `Content-signal` line
+such as `ai-train=no`, and disallows for several training tokens) once Bot
+Preference Sync is on and any of its AI policies is set to block; with every
+policy on allow, the file is served unchanged. In Google Search Console,
+Settings has a "Search generative AI" control. The default includes the site;
+exclude removes its links and content from AI Overviews, AI Mode and Discover's
+generative features. Google says it is not a ranking signal for the rest of
+Search and does not govern training (Google-Extended does). Read both settings
+during an audit and record them with the robots source.
 
 Remember what `robots.txt` does not do. It is a crawl instruction, not access
 control and not a way to keep a page out of the index. A disallowed URL that is
 linked from elsewhere can still appear as a bare result. Use `noindex` on the page
 for that, which requires the page to be crawlable in order to be read.
+
+**Snippet and archive rules reach AI answers.** The page-level rules, in a
+`robots` meta tag or an `X-Robots-Tag` header, decide what an answer may use,
+and an inherited sitewide value removes pages nobody meant to remove.
+
+| Rule | Google | Bing |
+| --- | --- | --- |
+| `nosnippet` | Also prevents use "as a direct input for AI Overviews and AI Mode" | No caption; "may limit Copilot citation quality" |
+| `max-snippet:[n]` | Limits how much text AI Overviews and AI Mode may use; `0` is "Equivalent to `nosnippet`" | `0` shows no text snippet |
+| `data-nosnippet` | Excludes that `span`, `div` or `section` | Excludes that element; may limit Copilot citation quality |
+| `noarchive` | No longer used by Google Search | "Do not link in Chat and Copilot. Do not use the content for training Microsoft's generative AI foundation models" |
+| `nocache` | Not used by Google Search | "Display only URL/Snippet/Title in Chat or Copilot"; with `noarchive` too, Bing treats it as `nocache` |
+
+Bing accepts every value as `X-Robots-Tag`, and `name="bingbot"` scopes a tag
+to Bing alone. A `noarchive` copied from a paywall template is the usual way a
+page meant to be cited disappears from Copilot. It is also Bing's only full
+training opt-out, which is why the training decision in SKILL.md costs Copilot
+citations on Bing and nowhere else.
 
 Point to the sitemap from `robots.txt`. Free, and some crawlers use it.
 
@@ -173,7 +241,10 @@ programmatic page rendered between 58 and 91 characters while every raw title
 sat under 55; the desktop result cut all of them, and the cut landed on the
 year or on the site name. Any test, any audit and any experiment reads the
 final tag, from a crawl of production, and the code has one function that
-produces exactly that tag.
+produces exactly that tag. The limit itself is a heuristic: Google says there
+is "no limit on how long a `<title>` element can be" and truncates the title
+link "typically to fit the device width". Sixty characters is a measured
+desktop budget, not a rule, so check the cut on a real result page.
 
 **The suffix is a budget decision, per page family.** Sixteen or so characters
 of site name on a sixty-character line is a quarter of the title. On the home
@@ -223,7 +294,10 @@ a result from `og:site_name` and `WebSite.name`. Without them it derives one fro
 the domain, and on a product living at `product.company.tld` it picks the
 company. Emit both from one constant, and once a page declares its own
 `openGraph` block, repeat `siteName` there: in Next.js the page object replaces
-the layout's, it does not merge.
+the layout's, it does not merge. Google says the `WebSite` structured data
+"must be on the home page of the site" (the domain or subdomain root), and it
+supports one site name per domain or subdomain, so a product under a
+subdirectory cannot have a name of its own.
 
 **Descriptions at scale must differ per instance, not per type.** A hundred
 generated pages sharing one templated sentence read as mass-duplicated
@@ -337,12 +411,22 @@ Practical notes:
 
 - **Ping after the deploy is live.** Pinging first gets the old content re-crawled
   and wastes the signal.
-- **Reuse the sitemap as the URL source** for a full submission, and accept
-  explicit paths for a targeted one.
-- **Filter by host** before submitting; a wrong-host URL fails the whole batch on
-  some endpoints.
-- **Batch,** and log the status per batch. Silence here is indistinguishable from
-  success.
+- **Submit only what was added, updated or deleted.** IndexNow says it "is not
+  designed for submitting every URL on your site at once" and "Do not resubmit
+  unchanged URLs." A full-sitemap submission is a one-time backfill at most,
+  after a migration or a redesign. Deleted and redirected URLs belong in the
+  submission too.
+- **Send as changes happen.** Bing's guidelines prefer streaming submissions to
+  batches, so ping per publication rather than collecting a day's URLs.
+- **Filter by host** before submitting. A request carrying URLs that do not
+  belong to the host answers `422`.
+- **Mind the key's scope.** The key is 8 to 128 characters (letters, digits,
+  dashes). A key file outside the root is named with `keyLocation`, and then it
+  covers only URLs under that file's path.
+- **Log the status code.** Silence here is indistinguishable from success. `200`
+  received, `202` received with key validation pending (normal on the first
+  request), `400` bad request, `403` key not valid, `422` URLs outside the host
+  or a key mismatch, `429` too many requests.
 
 ---
 
