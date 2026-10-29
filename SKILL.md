@@ -1,8 +1,8 @@
 ---
 name: agent-ready-seo
-description: Use when a site needs to be readable and citable by AI answer engines as well as search crawlers. Covers the markdown twin layer, llms.txt, structured data, programmatic pages backed by real data, publishing a citable dataset, and attributing AI referrals. Also use when the user mentions "AEO", "GEO", "answer engine optimization", "generative engine optimization", "llms.txt", "llms-full.txt", "markdown version of my pages", "get cited by ChatGPT", "AI search traffic", "AI crawlers", "JSON-LD", "structured data", "Dataset schema", "programmatic SEO", "thin content", "doorway pages", "sitemap", "canonical", "IndexNow", "title tag", "CTR", "click-through rate", "Search Console", "title experiment", "AI-generated content", "byline", "agent readiness score", "is-agentic", "WebMCP", or "where is my AI traffic coming from". For persuasion and page copy see copywriting; for classic on-page issue hunting see seo-audit.
+description: Use when a site needs to be readable and citable by AI answer engines as well as search crawlers. Covers the markdown twin layer, llms.txt, structured data, programmatic pages backed by real data, publishing a citable dataset, and attributing AI referrals. Also use when the user mentions "AEO", "GEO", "answer engine optimization", "generative engine optimization", "llms.txt", "llms-full.txt", "markdown version of my pages", "get cited by ChatGPT", "AI search traffic", "AI crawlers", "JSON-LD", "structured data", "Dataset schema", "programmatic SEO", "thin content", "doorway pages", "comparison page", "vs page", "alternatives page", "sitemap", "canonical", "IndexNow", "title tag", "CTR", "click-through rate", "Search Console", "title experiment", "AI-generated content", "byline", "agent readiness score", "is-agentic", "WebMCP", or "where is my AI traffic coming from". For persuasion and page copy see copywriting; for classic on-page issue hunting see seo-audit.
 metadata:
-  version: 1.4.0
+  version: 1.5.0
 license: MIT
 ---
 
@@ -39,6 +39,7 @@ Read the reference for the layer in play. Do not read all of them.
 | Make a gated SaaS (public marketing + logged-in app) stop answering 200 for every path | `references/agent-layer.md` (gated applications) | `templates/next/gated-app-404.ts` |
 | Turn proprietary data into something quotable: an index, a dated snapshot, a methodology page | `references/citable-data.md` | `templates/next/index-basket.ts`, `dataset-jsonld.ts` |
 | Generate many pages from data without creating thin content | `references/pseo.md` | `templates/next/sitemap.ts`, `sitemap-sharded.ts` |
+| Write or fix `/vs/{competitor}` and `/alternatives` pages for a product, by hand or generated | `references/pseo.md` (comparison pages), `references/schema-catalog.md` (comparison row) | none |
 | Fix the technical base: sitemap, robots, canonical, titles, IndexNow, social images | `references/foundations.md` | `templates/next/sitemap.ts`, `robots.ts` |
 | Decide which structured data type a page needs | `references/schema-catalog.md` | `templates/next/dataset-jsonld.ts` |
 | Know whether any of it worked, and where AI traffic lands | `references/measurement.md` | `templates/next/first-touch.ts` |

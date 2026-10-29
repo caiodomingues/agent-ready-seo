@@ -40,6 +40,16 @@ and validators will never catch it.
 Where possible, **derive the markup from the same source as the visible content**
 so the class of bug cannot exist.
 
+**Emit it in the server HTML.** JSON-LD that a client script adds after load
+(in Next.js, `next/script` with `strategy="afterInteractive"`, or any
+`useEffect` injection) is missing from the HTML that answer-engine fetchers
+read. Render a plain `<script type="application/ld+json">` from a server
+component. To check, count the `application/ld+json` tags in the `curl`
+output and compare against a rendered page. In Next.js, an injected block
+leaves no tag in the raw HTML. It shows up only as serialized props
+(`"strategy":"afterInteractive"`) inside the RSC payload. After render, it
+carries `data-nscript`.
+
 ---
 
 ## Page type to type mapping
@@ -49,7 +59,7 @@ so the class of bug cannot exist.
 | Editorial article | `BlogPosting` or `Article` | `BreadcrumbList`, `FAQPage` if it has a real FAQ |
 | How-to guide | `HowTo` | `BreadcrumbList`, `FAQPage` |
 | Segment or category hub | `CollectionPage` + `ItemList` | `BreadcrumbList` |
-| Comparison page | `Article` | `ItemList` of what is compared, `BreadcrumbList` |
+| Comparison page | `Article` with `about` naming both products (yours by `@id`) and `dateModified` from the last check of the other side | `ItemList` on an alternatives list, `BreadcrumbList` |
 | Free tool or calculator | `SoftwareApplication` or `WebApplication` | `FAQPage`, `BreadcrumbList` |
 | Product or plans page | `SoftwareApplication` with `Offer` | `AggregateRating` only if real |
 | Data or index page | `Dataset` | `BreadcrumbList`, `Place` for coverage |

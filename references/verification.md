@@ -92,6 +92,18 @@ curl -s $SITE/sitemap.xml | grep -c "\.md</loc>"          # expect 0
 curl -s  $SITE/robots.txt
 curl -sI $SITE/api/og?title=test | head -1                 # expect 200
 curl -sI -A "ChatGPT-User" $SITE/ | head -1                # edge rules can block by UA
+curl -s $SITE/robots.txt | grep -iE "disallow: /(_next|static|assets)/"   # expect nothing
+
+# Metadata in <head> per agent, on a dynamic route
+for ua in GPTBot ClaudeBot Googlebot; do
+  curl -s -A "Mozilla/5.0 (compatible; $ua)" $SITE/blog/some-post > /tmp/page.html
+  t=$(grep -bo '<title>' /tmp/page.html | head -1 | cut -d: -f1)
+  h=$(grep -bo '</head>' /tmp/page.html | head -1 | cut -d: -f1)
+  echo "$ua $([ -n "$t" ] && [ "$t" -lt "$h" ] && echo head || echo body)"
+done                                                       # expect head for each
+
+# Structured data in the raw HTML, not injected after load
+curl -s $SITE/plans | grep -c 'application/ld+json'        # expect >= 1
 
 # Caching survives attribution, and existed in the first place
 curl -sI $SITE/ | grep -i set-cookie                       # expect nothing

@@ -88,6 +88,13 @@ Disallow: /api/
 Allow: /api/og
 ```
 
+The costlier case is a disallow on the framework's asset path (`/_next/`,
+`/static/`, `/assets/`). A renderer that obeys robots, Googlebot included,
+then cannot load the scripts and styles. So whatever the page fills in with
+JavaScript, such as prices, FAQ answers and listings, is absent from what it
+indexes. Allowing only the image and font subpaths does not fix it. Never
+disallow the asset path.
+
 **4. Check that the edge agrees.** A CDN "block AI bots" or "AI labyrinth"
 toggle overrides the file silently: the allow rules keep shipping and the bots
 never arrive. Verify from outside with the user agent (`curl -A GPTBot`), and
@@ -130,6 +137,20 @@ belongs on the page.
 ---
 
 ## Titles and metadata
+
+**Metadata goes in `<head>` for every agent.** On a route that renders on
+demand, the Next.js App Router streams `generateMetadata` output. For any user
+agent that does not match `htmlLimitedBots`, `<title>`, the description, the
+canonical and Open Graph arrive inside `<body>` after the shell. The default
+list covers Bingbot, Applebot and the social previewers. It does not cover
+GPTBot, ClaudeBot, PerplexityBot or Googlebot, which is left out because it
+renders. A non-rendering fetcher that reads `<head>`, or stops early, gets a
+page with no title. On a large page, the tags can land after a megabyte of
+serialized payload. Set `htmlLimitedBots: /.*/` in `next.config` so every
+agent gets blocking metadata. The cost is that the first byte waits for
+`generateMetadata`. Statically rendered routes keep metadata in `<head>`
+either way. Verified on a Next.js 16.4 production build, with each user agent
+fetched by `curl`.
 
 **Measure the rendered `<title>`, not the string in the code.** A layout
 template (`%s | Site Name`) appends a suffix, a page helper appends a year, and

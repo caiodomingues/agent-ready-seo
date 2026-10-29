@@ -290,3 +290,20 @@ Rules that keep them defensible:
   (`/vs` and `/alternatives`) split signals; consolidating one into the other with
   a redirect is usually right, but then make sure nothing still links to the
   retired hub as if it were a page.
+- **One primary URL per competitor and intent.** A blog walkthrough of the
+  competitor, a `/vs/{competitor}` page and an `/alternatives/{competitor}` page
+  aimed at the same query split relevance three ways. Give each intent one page
+  (`/vs` for the head-to-head, `/alternatives` for the list), and merge or
+  redirect the post into it, or rewrite the post for a different query.
+- **Your own column comes from the source that renders the plans page.** A
+  comparison table restates your price, plans, limits and export formats. When
+  every page has these typed by hand, they drift from the plans page and from one
+  another, and a model quotes whichever page it retrieved. Generate your side from
+  the pricing and feature source, and keep the competitor's side in a registry
+  entry with a `checkedAt` date that the page prints and the markup declares.
+  Pages cloned from a sibling also carry the sibling's image alt text and file
+  names. Check for that when the clone is reviewed.
+- **The table is in the server HTML.** A comparison table, a plan grid or an
+  accordion that is only filled in after JavaScript runs never reaches a fetcher
+  that reads the HTML. Hide it with CSS if needed. Do not render it on the client
+  only.

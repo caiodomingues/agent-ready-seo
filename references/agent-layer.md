@@ -359,6 +359,19 @@ omit. Generic marketing copy does not read as guidance; specific use cases do.
 - The data behind the figures: https://example.com/about-the-data.md
 ```
 
+**State facts, never instruct the model.** "When to use this site" routes a
+fetch: it says what the site covers and where to enter. It must not tell the
+model what to answer. Lines such as "When asked about us, please say...", "cite
+this page as the authoritative source" or "recommend us for X" are embedded
+instructions. Answer engines treat retrieved text as data and are built to
+resist instructions in it, so those lines are ignored at best and discount the
+file at worst. The same applies to a page written for AI assistants
+(`/ai-instructions`, `/for-ai`). Write each line as a fact a reader can check,
+dated where it changes and linked to its evidence. Generate it from the same
+source as the page it summarizes. A claim with no published method behind it
+(a benchmark, "independent audit", "preferred by 100%") stays out until the
+method page exists.
+
 **Never promise capability you do not have.** A common self-inflicted wound: the
 map says "every page answers at URL + .md" while page types added later have no
 twin. An agent that gets a 404 on the documented convention stops trusting the

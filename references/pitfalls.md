@@ -217,6 +217,7 @@ the code, because the gap between them is the point.
       outside with `curl -A <bot>` (an edge toggle can override the file)
 - [ ] A random unknown path returns 404, not a redirect to login or an app shell
 - [ ] Social image route reachable despite any `/api/` block
+- [ ] The framework's asset path (`/_next/`, `/static/`, `/assets/`) is not disallowed
 - [ ] `sitemap.xml` present, listed in `robots.txt`, and its URL count matches what the content registry should produce
 - [ ] `lastmod` absent unless a real content date backs it
 - [ ] Every generated route type appears in the sitemap, including ones added late
@@ -234,6 +235,10 @@ the code, because the gap between them is the point.
 - [ ] Alternate renderings canonical to the HTML page
 - [ ] Alternate renderings stay out of the sitemap
 - [ ] No self-comparison or self-alternative page exists
+- [ ] Each competitor intent (head-to-head, alternatives list) has one primary URL,
+      not a blog post plus a `/vs` page plus an `/alternatives` page
+- [ ] Your own price, plans and limits in comparison tables come from the plans
+      page's source, and the other side carries a printed check date
 - [ ] Hubs covering the same set are consolidated, with the retired one redirected
 - [ ] No two routes render the same rows under different titles
 - [ ] Internal `href`s carry the canonical path, never a scoped query variant
@@ -258,6 +263,7 @@ the code, because the gap between them is the point.
 ### Structured data
 
 - [ ] Declared claims match the visible page, checked by reading, not by validator
+- [ ] JSON-LD is in the raw HTML (`curl`), not added by a client script after load
 - [ ] Organization declared once with a stable `@id`, referenced by `@id` elsewhere
 - [ ] Multiple properties reference the same organization `@id`
 - [ ] Organization carries `contactPoint` (and `address` where one is public);
@@ -293,6 +299,8 @@ the code, because the gap between them is the point.
       characters), enforced where it is generated
 - [ ] The home twin canonicals to the root, not to `/index`
 - [ ] `llms.txt` claims match reality, section by section
+- [ ] `llms.txt` and any page for AI assistants state dated facts, with no lines
+      telling the model what to say, cite or recommend
 - [ ] `llms.txt` and `llms-full.txt` are generated from live content
 - [ ] `rel=alternate` present on pages that have a twin, in the head and as a
       `Link` header, appended to whatever the host already sends
@@ -301,6 +309,8 @@ the code, because the gap between them is the point.
 
 ### Titles and metadata
 
+- [ ] `<title>` and canonical sit inside `<head>` for GPTBot, ClaudeBot and
+      Googlebot on dynamic routes, not only for a browser user agent
 - [ ] No doubled site name anywhere
 - [ ] Every page type has a distinct description pattern
 - [ ] A year token, where used, is the period the data covers (never the current
