@@ -27,6 +27,17 @@ import { mdTwinFor } from "@/lib/md-twins";
 
 const SITE_URL = "https://example.com";
 
+// Every .md URL in both files comes through the twin registry, so a section the
+// registry stops serving drops out of the map instead of being advertised.
+const twinUrl = (page: string): string | null => {
+  const md = mdTwinFor(page);
+  return md ? `${SITE_URL}${md}` : null;
+};
+const link = (title: string, page: string, note?: string): string[] => {
+  const url = twinUrl(page);
+  return url ? [`- [${title}](${url})${note ? `: ${note}` : ""}`] : [];
+};
+
 // Both files are rebuilt per request from live content; the CDN holds them for
 // the hour set in Cache-Control. Export this from each route file. With Next 16
 // `cacheComponents` enabled, segment config is an error: drop it (request time
@@ -42,41 +53,36 @@ export async function GET(): Promise<Response> {
 
   // Examples come from live content: a hand-typed slug 404s the day it is copied.
   const examples = [
-    ...(newestGuide ? [`${SITE_URL}/guides/${newestGuide.slug}.md`] : []),
-    ...(posts[0] ? [`${SITE_URL}/blog/${posts[0].slug}.md`] : []),
-    `${SITE_URL}/index.md (home)`,
-  ].join(", ");
+    newestGuide ? twinUrl(`/guides/${newestGuide.slug}`) : null,
+    posts[0] ? twinUrl(`/blog/${posts[0].slug}`) : null,
+    twinUrl("/"),
+  ]
+    .filter((u): u is string => u !== null)
+    .join(", ");
+  const hubs = [twinUrl("/guides"), twinUrl("/blog")].filter((u): u is string => u !== null);
+  const dataUrl = twinUrl("/about-the-data") ?? `${SITE_URL}/about-the-data`;
 
   // Point this at a guide chosen on purpose (a flag on the content object);
   // the newest one stands in until then.
-  const entryPoint = newestGuide
-    ? `- Best entry point: [${newestGuide.title}](${SITE_URL}/guides/${newestGuide.slug}.md)\n`
-    : "";
+  const entryUrl = newestGuide ? twinUrl(`/guides/${newestGuide.slug}`) : null;
+  const entryPoint = newestGuide && entryUrl ? `- Best entry point: [${newestGuide.title}](${entryUrl})\n` : "";
 
   // The highest-value block in the file: a question mapped to the page that
   // authoritatively answers it. Cheap to generate if titles are question-shaped.
   const questions = posts
     .filter((p) => /^(how|what|when|why)\b/i.test(p.title))
-    .map((p) => `- ${p.title}: ${SITE_URL}/blog/${p.slug}.md`)
+    .flatMap((p) => {
+      const url = twinUrl(`/blog/${p.slug}`);
+      return url ? [`- ${p.title}: ${url}`] : [];
+    })
     .join("\n");
 
   // Each link carries a sentence about what the page answers. That sentence is
   // what lets a model decide whether to spend a fetch on it.
-  const guideLines = guides
-    .map((g) => `- [${g.title}](${SITE_URL}/guides/${g.slug}.md): ${g.description}`)
-    .join("\n");
-
-  const postLines = posts
-    .map((p) => `- [${p.title}](${SITE_URL}/blog/${p.slug}.md): ${p.description}`)
-    .join("\n");
-
-  // Only URLs the twin registry serves; a comparison page without a twin is
-  // left out rather than advertised as a .md that 404s.
+  const guideLines = guides.flatMap((g) => link(g.title, `/guides/${g.slug}`, g.description)).join("\n");
+  const postLines = posts.flatMap((p) => link(p.title, `/blog/${p.slug}`, p.description)).join("\n");
   const comparisonLines = comparableCompetitors()
-    .flatMap((c) => {
-      const twin = mdTwinFor(`/vs/${c.slug}`);
-      return twin ? [`- [Site vs ${c.name}](${SITE_URL}${twin}): ${c.focus}`] : [];
-    })
+    .flatMap((c) => link(`Site vs ${c.name}`, `/vs/${c.slug}`, c.focus))
     .join("\n");
 
   // Name the sections that have twins rather than claiming "every page".
@@ -86,7 +92,7 @@ export async function GET(): Promise<Response> {
 
 Markdown for agents: pages in the sections listed below also answer as clean
 markdown by adding \`.md\` to the URL. Examples: ${examples}.
-Hubs have twins too: ${SITE_URL}/guides.md, ${SITE_URL}/blog.md.
+Hubs have twins too: ${hubs.join(", ")}.
 
 Two or three paragraphs describing the product, who it is for, and the problem it
 solves. Write it for a reader who will never see the site design: no "as you can
@@ -99,7 +105,7 @@ most llms.txt files omit, and generic marketing copy does not read as guidance.
 
 - Use for: <the two or three jobs this site genuinely answers best>
 - Not for: <what is outside scope, so an agent does not waste a fetch>
-${entryPoint}- The data behind the figures: ${SITE_URL}/about-the-data.md
+${entryPoint}- The data behind the figures: ${dataUrl}
 
 ## Questions we answer
 
@@ -119,7 +125,7 @@ ${postLines}
 
 ## Data and methodology
 
-- [How the data is produced](${SITE_URL}/about-the-data.md): collection method,
+- [How the data is produced](${dataUrl}): collection method,
   aggregation rules, sample floors, known limitations, and how to cite it.
 
 ## Author
@@ -174,18 +180,14 @@ async function GET_FULL(): Promise<Response> {
   // Same generators the .md twins use. Reusing them is what keeps the bulk
   // file from becoming a third rendering that drifts from the other two.
   const docs: CorpusDoc[] = [
-    ...getPublishedGuides().map((g) => ({
-      title: g.title,
-      url: `${SITE_URL}/guides/${g.slug}.md`,
-      publishDate: g.publishDate,
-      markdown: guideToMarkdown(g),
-    })),
-    ...getPublishedPosts().map((p) => ({
-      title: p.title,
-      url: `${SITE_URL}/blog/${p.slug}.md`,
-      publishDate: p.publishDate,
-      markdown: postToMarkdown(p),
-    })),
+    ...getPublishedGuides().flatMap((g) => {
+      const url = twinUrl(`/guides/${g.slug}`);
+      return url ? [{ title: g.title, url, publishDate: g.publishDate, markdown: guideToMarkdown(g) }] : [];
+    }),
+    ...getPublishedPosts().flatMap((p) => {
+      const url = twinUrl(`/blog/${p.slug}`);
+      return url ? [{ title: p.title, url, publishDate: p.publishDate, markdown: postToMarkdown(p) }] : [];
+    }),
   ];
 
   const header = [
