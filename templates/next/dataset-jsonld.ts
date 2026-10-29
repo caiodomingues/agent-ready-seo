@@ -45,8 +45,13 @@ export function datasetSchema(params: {
   temporalCoverage: string;
   spatialCoverageName: string;
   keywords: string[];
-  /** Period the published figures belong to, e.g. "2026-05". */
+  /** Date (YYYY-MM-DD) the series was first released. Fixed for its lifetime. */
   datePublished: string;
+  /**
+   * Date (YYYY-MM-DD) the latest period's figures were published. Moves only
+   * when the figures do, not on a re-render.
+   */
+  dateModified: string;
 }) {
   return {
     "@context": "https://schema.org",
@@ -63,11 +68,12 @@ export function datasetSchema(params: {
     isAccessibleForFree: true,
     temporalCoverage: params.temporalCoverage,
     datePublished: params.datePublished,
+    dateModified: params.dateModified,
     spatialCoverage: { "@type": "Place", name: params.spatialCoverageName },
     keywords: params.keywords,
-    // Point at the methodology page. This is what turns a number into a
-    // citable number, and it is frequently the page that gets linked.
-    citation: `${SITE_URL}/about-the-data`,
+    // The methodology page, not `citation`: Google reads `citation` as academic
+    // work to cite alongside the dataset. schema.org accepts a URL here.
+    measurementTechnique: `${SITE_URL}/about-the-data`,
     distribution: [
       {
         "@type": "DataDownload",

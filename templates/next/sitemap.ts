@@ -29,14 +29,17 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${SITE_URL}/about-the-data`, changeFrequency: "monthly", priority: 0.7 },
   ];
 
-  const guides: MetadataRoute.Sitemap = getPublishedGuides().map((g) => ({
-    url: `${SITE_URL}/guides/${g.slug}`,
-    // Conditional, never `new Date()`. A per-deploy timestamp claims the whole
-    // site changes every deploy, which teaches crawlers to ignore the field.
-    ...(g.updatedAt ?? g.publishDate ? { lastModified: new Date(g.updatedAt ?? g.publishDate) } : {}),
-    changeFrequency: "monthly",
-    priority: 0.6,
-  }));
+  const guides: MetadataRoute.Sitemap = getPublishedGuides().map((g) => {
+    const contentDate = g.updatedAt ?? g.publishDate;
+    return {
+      url: `${SITE_URL}/guides/${g.slug}`,
+      // Conditional, never `new Date()`. A per-deploy timestamp claims the whole
+      // site changes every deploy, which teaches crawlers to ignore the field.
+      ...(contentDate ? { lastModified: new Date(contentDate) } : {}),
+      changeFrequency: "monthly" as const,
+      priority: 0.6,
+    };
+  });
 
   const posts: MetadataRoute.Sitemap = getPublishedPosts().map((p) => ({
     url: `${SITE_URL}/blog/${p.slug}`,
@@ -65,7 +68,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
  * Routes added late, especially on-demand ones, are frequently live and absent
  * here for months. Compare the deployed count against the registry:
  *
- *   curl -s https://example.com/sitemap.xml | grep -c "<loc>"
+ *   curl -s https://example.com/sitemap.xml | grep -o "<loc>" | wc -l
  *
  * and break it down by section to see which type is missing:
  *

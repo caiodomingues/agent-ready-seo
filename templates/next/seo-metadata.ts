@@ -101,18 +101,23 @@ export function renderTitle(family: SeoFamily, headline: string): string {
 }
 
 /**
- * Freshness token, added only when the headline has no year and the result
- * still fits. Without the guard a 55-character title gains seven and is cut
- * exactly on the year it was trying to show.
+ * Freshness token, added only when the headline has no year and the rendered
+ * title still fits. Without the guard a 55-character title gains seven and is
+ * cut exactly on the year it was trying to show.
  *
  * `year` is the period the content covers. No clock default: a token that
  * advances on 1 January over unchanged content is what search engines read as
  * faked freshness, and the title then promises data the page does not have.
+ *
+ * Pass `family` so the budget includes the suffix. Omitted, the bare headline
+ * is measured, which is only right for a family without the suffix.
  */
-export function withYear(headline: string, year: number | undefined): string {
-  if (year === undefined || /\b20\d{2}\b/.test(headline)) return headline;
+export function withYear(headline: string, year: number | undefined, family?: SeoFamily): string {
+  // Digit lookarounds instead of \b, so "FY2025" and "2025Q1" count as dated.
+  if (year === undefined || /(?<!\d)20\d{2}(?!\d)/.test(headline)) return headline;
   const dated = `${headline} (${year})`;
-  return dated.length <= TITLE_MAX ? dated : headline;
+  const rendered = family ? renderTitle(family, dated) : dated;
+  return rendered.length <= TITLE_MAX ? dated : headline;
 }
 
 export function hasMarkdownTwin(path: string): boolean {
@@ -191,7 +196,7 @@ export function guideSeo(slug: string): PageSeo | null {
     family: "guides",
     path: `/guides/${guide.slug}`,
     // The year of the data the guide quotes; evergreen guides leave it unset.
-    headline: withYear(guide.metaTitle, guide.dataYear),
+    headline: withYear(guide.metaTitle, guide.dataYear, "guides"),
     description: guide.metaDescription,
     og: { type: "article", tag: guide.category },
   });
@@ -239,6 +244,14 @@ export function listAllPages(): PageSeo[] {
  *       .filter((p) => p.title.length > TITLE_MAX)
  *       .filter((p) => LEGACY_OVER_LIMIT[p.path]?.title !== p.title.length)
  *       .map((p) => `${p.path} (${p.title.length}): ${p.title}`);
+ *     expect(over).toEqual([]);
+ *   });
+ *
+ *   test("rendered description fits", () => {
+ *     const over = enforced
+ *       .filter((p) => p.description.length > DESCRIPTION_MAX)
+ *       .filter((p) => LEGACY_OVER_LIMIT[p.path]?.description !== p.description.length)
+ *       .map((p) => `${p.path} (${p.description.length}): ${p.description}`);
  *     expect(over).toEqual([]);
  *   });
  *

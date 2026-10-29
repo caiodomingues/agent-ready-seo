@@ -7,6 +7,7 @@
  *       Accept includes text/html  -> the site's own 404 page, status 404
  *       anything else              -> text/markdown body with recovery links
  *   GET /api/anything           (no session) -> unchanged (redirect or 401)
+ *   GET /logo.avif, /opengraph-image (outside the gated prefixes) -> unchanged
  *   Any authenticated request   -> unchanged
  *
  * The failure this prevents: a middleware that redirects EVERY unknown path to
@@ -15,11 +16,11 @@
  * because every path a human types is real.
  *
  * Three pieces: a shared list of gated prefixes, a test that keeps the list
- * honest against the route directory, and the branch in the middleware.
+ * honest against the route directory, and the branch in the proxy.
  */
 
 // ---------------------------------------------------------------------------
-// 1. src/lib/app-prefixes.ts  (dependency-free: imported by the middleware AND
+// 1. src/lib/app-prefixes.ts  (dependency-free: imported by the proxy AND
 //    by robots.ts, so the disallow list and the gate never disagree)
 // ---------------------------------------------------------------------------
 
@@ -43,6 +44,24 @@ export function isKnownPath(pathname: string): boolean {
   if (pathname === "/") return true;
   const first = pathname.split("/")[1] ?? "";
   return (PUBLIC_APP_DIRS as readonly string[]).includes(first) || isGatedAppPath(pathname);
+}
+
+/**
+ * Next serves these without an extension, at any depth, and with an id
+ * segment under generateImageMetadata. A slug shaped like these
+ * (`/blog/icon-design`) is treated as an asset and loses negotiation.
+ */
+const METADATA_IMAGE_ROUTE = /^(?:opengraph-image|twitter-image|icon|apple-icon)(?:\d+|-[a-z0-9]+)?$/;
+
+/**
+ * A path a document can live at, as opposed to a public file or a metadata
+ * route. Only these may be negotiated or answered with the markdown 404: an
+ * image fetch sends no text/html and would otherwise get a 404 body.
+ */
+export function isPageShapedPath(pathname: string): boolean {
+  const segments = pathname.split("/").filter(Boolean);
+  if (segments.at(-1)?.includes(".")) return false;
+  return !segments.slice(-2).some((s) => METADATA_IMAGE_ROUTE.test(s));
 }
 
 /** A path that exists behind the session gate (page or API). */
@@ -69,11 +88,12 @@ export function isGatedAppPath(pathname: string): boolean {
 // removed area left in the list would keep redirecting a dead path to login.
 
 // ---------------------------------------------------------------------------
-// 3. The branch in src/middleware.ts (Next 16: src/proxy.ts), placed where the
-//    unauthenticated redirect used to be unconditional.
+// 3. The branch in src/proxy.ts (Next 15 and earlier: src/middleware.ts),
+//    placed where the unauthenticated redirect used to be unconditional.
 // ---------------------------------------------------------------------------
 
 import { NextResponse, type NextRequest } from "next/server";
+import { acceptsHtml } from "@/lib/markdown-response";
 
 const SITE_URL = "https://example.com";
 
@@ -88,15 +108,16 @@ This path does not exist. Try:
 `;
 }
 
-export function acceptsHtml(accept: string | null): boolean {
-  return /\btext\/html\b|\bapplication\/xhtml\+xml\b/i.test(accept ?? "");
-}
-
 export function unauthenticatedResponse(req: NextRequest): NextResponse {
   const { pathname } = req.nextUrl;
 
   if (!isGatedAppPath(pathname)) {
-    // Never NextResponse.next() here. The rewrite target starts with a dot, so
+    // Public files and metadata images: the framework serves them or 404s
+    // them. Checked only outside the gate, so `/admin/export.csv` still
+    // redirects instead of reaching its handler without a session.
+    if (!isPageShapedPath(pathname)) return NextResponse.next();
+
+    // Never NextResponse.next() for an unknown page. The rewrite target starts with a dot, so
     // it can never resolve to a real route: the framework renders its 404 page
     // with a real 404 status, and an area someone forgot to register stays
     // closed instead of falling through to its handler.
@@ -120,6 +141,12 @@ export function unauthenticatedResponse(req: NextRequest): NextResponse {
  *   curl -s -o /dev/null -w '%{http_code}\n' -H "Accept: text/html" $SITE/definitely-not-a-page # 404
  *   curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' $SITE/dashboard                    # 307 .../login
  *   curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' $SITE/api/me                       # unchanged
+ *   curl -s -o /dev/null -w '%{http_code}\n' -H "Accept: image/*" $SITE/logo.avif               # 200
+ *   curl -s -o /dev/null -w '%{http_code}\n' -H "Accept: image/*" $SITE/opengraph-image         # 200
+ *
+ * The proxy matcher excludes every path whose last segment has an extension
+ * (see markdown-response.ts); isPageShapedPath covers the extensionless
+ * metadata routes the matcher still lets through.
  *
  * PORTING
  * Any middleware that runs before routing can do this. The two things that do

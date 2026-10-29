@@ -6,7 +6,7 @@
  * The handlers live under a private prefix; nothing links to that prefix.
  *
  * Five surfaces need to agree on which pages have a twin: the rewrites, the
- * Accept negotiation in the middleware, the `rel=alternate` in page metadata,
+ * Accept negotiation in the proxy, the `rel=alternate` in page metadata,
  * the claim in llms.txt, and the check that every registered route has a
  * handler. They agree only when all five read this one list. A route that
  * negotiates without a twin turns a page that opens fine in a browser into a
@@ -14,7 +14,8 @@
  * llms.txt promise that 404s, one page at a time.
  *
  * Two files: the registry (dependency-free, because next.config.ts and the
- * edge middleware both import it) and the config that consumes it.
+ * proxy both import it; proxy.ts was middleware.ts before Next 16) and the
+ * config that consumes it.
  */
 
 /* ------------------------- src/lib/md-twins.ts ------------------------- */
@@ -89,7 +90,7 @@ const PAGE_MATCHERS = MD_TWIN_ROUTES.filter(
 
 /**
  * The twin URL for a concrete page path, or null when the page has none.
- * Read by the middleware (negotiation), by seo-metadata.ts (rel=alternate)
+ * Read by the proxy (negotiation), by seo-metadata.ts (rel=alternate)
  * and by llms.txt (which sections to claim).
  */
 export function mdTwinFor(pathname: string): string | null {

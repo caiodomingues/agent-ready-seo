@@ -41,7 +41,11 @@ export interface BasketItem {
   refPackLabel: string;
   /** Inclusion pattern, anchored where possible to avoid matching compounds. */
   include: RegExp;
-  /** Exclusions: variants that are a different product at a different price. */
+  /**
+   * Exclusions: variants that are a different product at a different price.
+   * Word-bounded, so "light" does not catch "delight". `\b` is ASCII-only,
+   * which holds because searchName is accent-stripped.
+   */
   exclude?: RegExp;
   /** Sanity bounds for the reference package, in currency units. */
   minPlausible: number;
@@ -63,7 +67,7 @@ export const BASKET: readonly BasketItem[] = [
     refPackLabel: "1 kg",
     include: /^item a\b/,
     // Premium and specialty variants are a different market at a different price.
-    exclude: /organic|light|premium|imported|sample/,
+    exclude: /\b(organic|light|premium|imported|sample)\b/,
     minPlausible: 2,
     maxPlausible: 12,
     minPackRefQty: 0.5,
@@ -97,7 +101,9 @@ export function matches(item: BasketItem, obs: Observation): boolean {
 /**
  * Median, not mean: one extreme value should not move a published figure.
  * Sample counts DISTINCT entities, so the same thing observed many times does
- * not inflate apparent confidence.
+ * not inflate apparent confidence. Each entity contributes its cheapest
+ * observation, which makes this a lowest-available-price index; the
+ * methodology page must say so.
  */
 export function aggregate(
   item: BasketItem,
@@ -108,7 +114,6 @@ export function aggregate(
   const byEntity = new Map<string, number>();
   for (const o of kept) {
     const scaled = (o.price / toRefUnit(o.quantity, o.unit, item.refUnit)!) * item.refQty;
-    // One value per entity: the cheapest observation of it.
     byEntity.set(o.entityId, Math.min(byEntity.get(o.entityId) ?? Infinity, scaled));
   }
 

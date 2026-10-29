@@ -15,20 +15,25 @@
  *    convention gets a 404 and stops trusting the whole file. Either derive the
  *    claim from the routes that really have twins, or name the covered sections.
  *
- * Drop at src/app/llms.txt/route.ts and src/app/llms-full.txt/route.ts.
+ * Two route files, one section each below: src/app/llms.txt/route.ts and
+ * src/app/llms-full.txt/route.ts. The generators come from md-route.ts.
  */
 
 import { getPublishedGuides } from "@/content/guides";
 import { getPublishedPosts } from "@/lib/blog-data";
 import { comparableCompetitors } from "@/content/competitors";
 import { guideToMarkdown, postToMarkdown } from "@/lib/markdown-export";
+import { mdTwinFor } from "@/lib/md-twins";
 
 const SITE_URL = "https://example.com";
 
+// Both files are rebuilt per request from live content; the CDN holds them for
+// the hour set in Cache-Control. Export this from each route file. With Next 16
+// `cacheComponents` enabled, segment config is an error: drop it (request time
+// is the default) and cache with "use cache" instead.
 export const dynamic = "force-dynamic";
-export const revalidate = 3600;
 
-/* ---------------------------- llms.txt ---------------------------- */
+/* --------------------- src/app/llms.txt/route.ts --------------------- */
 
 export async function GET(): Promise<Response> {
   const guides = getPublishedGuides();
@@ -51,8 +56,13 @@ export async function GET(): Promise<Response> {
     .map((p) => `- [${p.title}](${SITE_URL}/blog/${p.slug}.md): ${p.description}`)
     .join("\n");
 
+  // Only URLs the twin registry serves; a comparison page without a twin is
+  // left out rather than advertised as a .md that 404s.
   const comparisonLines = comparableCompetitors()
-    .map((c) => `- [Alternatives to ${c.name}](${SITE_URL}/alternatives/${c.slug}.md): ${c.focus}`)
+    .flatMap((c) => {
+      const twin = mdTwinFor(`/vs/${c.slug}`);
+      return twin ? [`- [Site vs ${c.name}](${SITE_URL}${twin}): ${c.focus}`] : [];
+    })
     .join("\n");
 
   // Name the sections that have twins rather than claiming "every page".
@@ -114,24 +124,76 @@ ${postLines}
   });
 }
 
-/* -------------------------- llms-full.txt -------------------------- */
+/* ------------------- src/app/llms-full.txt/route.ts ------------------- */
 
-export async function GET_FULL(): Promise<Response> {
-  // Same generators the .md twins use, concatenated. Reusing them is what keeps
-  // the bulk file from becoming a third rendering that drifts from the other two.
-  const parts = [
-    ...getPublishedGuides().map(guideToMarkdown),
-    ...getPublishedPosts().map(postToMarkdown),
+/** About 75k tokens of prose: past this, the reader's context window never reaches the tail. */
+const LLMS_FULL_BUDGET_BYTES = 300_000;
+const SEPARATOR = "\n\n---\n\n";
+
+interface CorpusDoc {
+  title: string;
+  url: string;
+  publishDate: string;
+  markdown: string;
+}
+
+const byteLength = (s: string) => Buffer.byteLength(s, "utf8");
+
+/**
+ * Newest first until the budget is spent. The newest document is admitted even
+ * when it alone exceeds the budget, so the file is never an empty corpus.
+ */
+function fillByBudget(docs: CorpusDoc[], budgetBytes: number) {
+  const newestFirst = [...docs].sort((a, b) => b.publishDate.localeCompare(a.publishDate));
+  const admitted: CorpusDoc[] = [];
+  let used = 0;
+  for (const doc of newestFirst) {
+    const size = byteLength(doc.markdown) + byteLength(SEPARATOR);
+    if (admitted.length > 0 && used + size > budgetBytes) break;
+    admitted.push(doc);
+    used += size;
+  }
+  return { admitted, overflow: newestFirst.slice(admitted.length) };
+}
+
+// In its own file this is `export async function GET`; renamed here only
+// because both route files share this template.
+async function GET_FULL(): Promise<Response> {
+  // Same generators the .md twins use. Reusing them is what keeps the bulk
+  // file from becoming a third rendering that drifts from the other two.
+  const docs: CorpusDoc[] = [
+    ...getPublishedGuides().map((g) => ({
+      title: g.title,
+      url: `${SITE_URL}/guides/${g.slug}.md`,
+      publishDate: g.publishDate,
+      markdown: guideToMarkdown(g),
+    })),
+    ...getPublishedPosts().map((p) => ({
+      title: p.title,
+      url: `${SITE_URL}/blog/${p.slug}.md`,
+      publishDate: p.publishDate,
+      markdown: postToMarkdown(p),
+    })),
   ];
 
-  const body = [
+  const header = [
     `# Site Name - full text corpus`,
     ``,
-    `> Every published page, concatenated, for bulk ingestion. Individual pages`,
-    `> are available at their own URL plus \`.md\`. See ${SITE_URL}/llms.txt.`,
+    `> Published pages, newest first, up to ${LLMS_FULL_BUDGET_BYTES / 1000} KB. Older pages`,
+    `> are listed at the end with their URL. Every page also answers at its own`,
+    `> URL plus \`.md\`. See ${SITE_URL}/llms.txt.`,
     ``,
-    parts.join("\n\n---\n\n"),
+    ``,
   ].join("\n");
+
+  // The overflow list sits outside the budget: one line per page, and it is
+  // what tells the reader the corpus continues.
+  const { admitted, overflow } = fillByBudget(docs, LLMS_FULL_BUDGET_BYTES - byteLength(header));
+  const overflowSection = overflow.length
+    ? `${SEPARATOR}## More pages, not included above\n\n${overflow.map((d) => `- [${d.title}](${d.url})`).join("\n")}\n`
+    : "";
+
+  const body = header + admitted.map((d) => d.markdown).join(SEPARATOR) + overflowSection;
 
   return new Response(body, {
     headers: {
@@ -155,11 +217,16 @@ export async function GET_FULL(): Promise<Response> {
  * THE MAP'S BUDGET, as a test next to the route. Scanners flag a map over about
  * 30,000 characters, and it grows past that one useful block at a time. When
  * it fails, move answers (definitions, FAQ, the article long tail) into
- * llms-full.txt or the hub twins; do not raise the number.
+ * llms-full.txt or the hub twins; do not raise the number. Measured in bytes,
+ * which is never below the character count, so a pass holds for both units.
  *
  *   import { GET } from "./route";
  *   it("llms.txt stays a map", async () => {
- *     const text = await (await GET()).text();
- *     expect(text.length).toBeLessThanOrEqual(30_000);
+ *     const bytes = (await (await GET()).arrayBuffer()).byteLength;
+ *     expect(bytes).toBeLessThanOrEqual(30_000);
  *   });
+ *
+ * llms-full.txt: past the budget, the file ends with the overflow heading.
+ *   curl -s https://example.com/llms-full.txt | wc -c
+ *   curl -s https://example.com/llms-full.txt | grep -c "^## More pages, not included above"
  */

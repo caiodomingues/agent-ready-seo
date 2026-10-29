@@ -2,8 +2,13 @@
  * A `.md` twin route handler, in the two shapes you need: one generated from
  * structured content, one reading a hand-maintained mirror from disk.
  *
- * File location (Next.js App Router):
+ * Two files (Next.js App Router):
+ *   src/lib/markdown-export.ts              <- the generators; llms-full.txt imports them too
  *   src/app/api/md/guides/[slug]/route.ts   <- reached via the rewrite in rewrites.ts
+ *
+ * The generators live in a lib module because a route file may export only
+ * HTTP methods and segment config, and because the twin and llms-full.txt
+ * must render through the same function or they drift.
  *
  * Prefer the generated shape. A generated twin cannot drift from the page,
  * because both render from the same source. Use the file-backed shape only for
@@ -11,33 +16,18 @@
  * case as a 404 rather than a silent fallback.
  */
 
+/* --------------------- src/lib/markdown-export.ts --------------------- */
+
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { markdownResponse, frontMatter } from "@/lib/markdown-response";
-import { getGuide, getPublishedGuides } from "@/content/guides";
+import { frontMatter } from "@/lib/markdown-response";
+import { getPublishedGuides } from "@/content/guides";
 
 const SITE_URL = "https://example.com";
 
-// The twin must not be cached at build time when its content depends on data
-// that changes without a deploy. For fully static content, drop this and let it
-// be prerendered.
-export const dynamic = "force-dynamic";
+/* Shape A: generated from the same content object the page renders */
 
-/* ------------------------------------------------------------------ */
-/* Shape A: generated from the same content object the page renders    */
-/* ------------------------------------------------------------------ */
-
-export async function GET(_req: Request, { params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
-  const guide = getGuide(slug);
-
-  // Unknown or unpublished slugs must 404 here exactly as the page does.
-  if (!guide || !isPublished(guide)) return markdownResponse(null);
-
-  return markdownResponse(guideToMarkdown(guide));
-}
-
-function guideToMarkdown(guide: Guide): string {
+export function guideToMarkdown(guide: Guide): string {
   const url = `${SITE_URL}/guides/${guide.slug}`;
 
   return (
@@ -72,9 +62,18 @@ function guideToMarkdown(guide: Guide): string {
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Shape B: hand-maintained mirror read from disk                      */
-/* ------------------------------------------------------------------ */
+export function postToMarkdown(post: Post): string {
+  return (
+    frontMatter({
+      title: post.title,
+      sourceUrl: `${SITE_URL}/blog/${post.slug}`,
+      updated: post.updatedAt ?? post.publishDate,
+      description: post.description,
+    }) + `# ${post.title}\n\n${post.bodyMarkdown}\n`
+  );
+}
+
+/* Shape B: hand-maintained mirror read from disk */
 
 export async function readMirror(slug: string): Promise<string | null> {
   // Whitelist against the real content list. Never interpolate a request
@@ -114,8 +113,39 @@ type Guide = {
   related: { slug: string; title: string }[];
 };
 
-function isPublished(guide: Guide): boolean {
-  return !guide.publishDate || guide.publishDate <= new Date().toISOString().slice(0, 10);
+type Post = {
+  slug: string;
+  title: string;
+  description: string;
+  publishDate: string;
+  updatedAt?: string;
+  bodyMarkdown: string;
+};
+
+export function isPublished(item: { publishDate?: string }): boolean {
+  return !item.publishDate || item.publishDate <= new Date().toISOString().slice(0, 10);
+}
+
+/* --------------- src/app/api/md/guides/[slug]/route.ts --------------- */
+
+import { markdownResponse } from "@/lib/markdown-response";
+import { getGuide } from "@/content/guides";
+// In its own file: import { guideToMarkdown, isPublished } from "@/lib/markdown-export";
+
+// The twin must not be cached at build time when its content depends on data
+// that changes without a deploy. For fully static content, drop this and let it
+// be prerendered. With Next 16 `cacheComponents` enabled, segment config is an
+// error: drop it (request time is the default) and cache with "use cache".
+export const dynamic = "force-dynamic";
+
+export async function GET(_req: Request, { params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const guide = getGuide(slug);
+
+  // Unknown or unpublished slugs must 404 here exactly as the page does.
+  if (!guide || !isPublished(guide)) return markdownResponse(null);
+
+  return markdownResponse(guideToMarkdown(guide));
 }
 
 /* PORTING

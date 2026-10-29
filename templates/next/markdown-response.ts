@@ -97,56 +97,91 @@ export function frontMatter(fields: {
  * gets HTML.
  */
 
-interface AcceptEntry {
+interface AcceptRange {
   type: string;
+  subtype: string;
   q: number;
 }
 
-function parseAccept(header: string | null): AcceptEntry[] {
+function parseAccept(header: string | null): AcceptRange[] {
   if (!header) return [];
-  return header
-    .split(",")
-    .map((part) => {
-      const [type, ...params] = part.trim().split(";");
-      const q = params.map((p) => /^\s*q=([0-9.]+)\s*$/.exec(p)).find(Boolean)?.[1];
-      return { type: type.trim().toLowerCase(), q: q === undefined ? 1 : Number(q) };
-    })
-    .filter((e) => e.type)
-    .sort((a, b) => b.q - a.q);
+  return header.split(",").flatMap((part) => {
+    const [range = "", ...params] = part.split(";").map((s) => s.trim().toLowerCase());
+    const [type, subtype] = range.split("/");
+    if (!type || !subtype) return [];
+    const q = Number(params.find((p) => p.startsWith("q="))?.slice(2) ?? 1);
+    return [{ type, subtype, q: Number.isNaN(q) ? 1 : q }];
+  });
 }
 
-/** True when the client prefers markdown over HTML. */
+const EXACT = 2;
+
+/**
+ * The range that sets a type's q is the most specific one that matches it
+ * (RFC 9110 12.5.1): `text/html;q=0.1` next to a full wildcard at q=0.9
+ * gives HTML 0.1, not 0.9.
+ */
+function mostSpecificRange(ranges: AcceptRange[], mime: string) {
+  const [type, subtype] = mime.split("/");
+  let best: { q: number; specificity: number } | null = null;
+  for (const r of ranges) {
+    const specificity =
+      r.type === type && r.subtype === subtype ? EXACT
+      : r.type === type && r.subtype === "*" ? 1
+      : r.type === "*" && r.subtype === "*" ? 0
+      : -1;
+    if (specificity > (best?.specificity ?? -1)) best = { q: r.q, specificity };
+  }
+  return best;
+}
+
+/** q the client assigns to `mime`; 0 means not acceptable. No header accepts anything. */
+export function acceptQuality(acceptHeader: string | null, mime: string): number {
+  const ranges = parseAccept(acceptHeader);
+  if (ranges.length === 0) return 1;
+  return mostSpecificRange(ranges, mime)?.q ?? 0;
+}
+
+/** True when the client prefers markdown over HTML. A tie goes to HTML. */
 export function prefersMarkdown(acceptHeader: string | null): boolean {
-  const entries = parseAccept(acceptHeader);
-  if (entries.length === 0) return false;
-
-  const md = entries.find((e) => e.type === "text/markdown")?.q ?? 0;
-  if (md === 0) return false;
-
-  const html = Math.max(
-    entries.find((e) => e.type === "text/html")?.q ?? 0,
-    entries.find((e) => e.type === "text/*")?.q ?? 0,
-    entries.find((e) => e.type === "*/*")?.q ?? 0,
-  );
-  return md > html;
+  const md = acceptQuality(acceptHeader, "text/markdown");
+  return md > 0 && md > acceptQuality(acceptHeader, "text/html");
 }
 
 /** True when the client accepts nothing this resource can produce, so 406. */
 export function acceptsNothingWeServe(acceptHeader: string | null): boolean {
-  const entries = parseAccept(acceptHeader);
-  if (entries.length === 0) return false;
-  const servable = new Set(["text/html", "text/markdown", "text/*", "*/*"]);
-  return !entries.some((e) => e.q > 0 && servable.has(e.type));
+  return acceptQuality(acceptHeader, "text/markdown") === 0 && acceptQuality(acceptHeader, "text/html") === 0;
+}
+
+/**
+ * Picks the 404 body: true only when the client names HTML itself with q > 0.
+ * A wildcard does not count, so curl and most agents get the markdown 404 and
+ * browsers get the site's 404 page.
+ */
+export function acceptsHtml(acceptHeader: string | null): boolean {
+  const ranges = parseAccept(acceptHeader);
+  return ["text/html", "application/xhtml+xml"].some((mime) => {
+    const range = mostSpecificRange(ranges, mime);
+    return range !== null && range.specificity === EXACT && range.q > 0;
+  });
 }
 
 /*
- * In middleware (or proxy.ts, depending on the Next.js version). The matcher
- * must exclude `.md` and the other static extensions, so a request that
- * already carries the suffix is never renegotiated into a twin of the twin.
+ * In src/proxy.ts (Next 15 and earlier: src/middleware.ts exporting
+ * `middleware`). The matcher must exclude every path whose last segment has an
+ * extension: `.md`, so a request that already carries the suffix is never
+ * renegotiated into a twin of the twin, and public files, so an image fetch
+ * never meets the negotiated 404. The cost is that a page slug containing a
+ * dot (`/blog/v1.2-release`) gets no negotiation; keep slugs dot-free.
  *
- *   export function middleware(req: NextRequest) {
+ *   export function proxy(req: NextRequest) {
  *     const { pathname } = req.nextUrl;
  *     const accept = req.headers.get("accept");
+ *
+ *     // Metadata routes (/opengraph-image, /icon) have no extension and match
+ *     // page patterns such as /blog/:slug; without this an image fetch gets 406.
+ *     // On a gated site the session gate runs before this early return.
+ *     if (!isPageShapedPath(pathname)) return NextResponse.next();
  *
  *     const twin = mdTwinFor(pathname);                // registry in rewrites.ts
  *     if (!twin) {
@@ -176,7 +211,7 @@ export function acceptsNothingWeServe(acceptHeader: string | null): boolean {
  *   }
  *
  *   export const config = {
- *     matcher: ["/((?!api/|_next/|.*\\.(?:md|txt|xml|json|svg|png|jpg|webp|ico|css|js|map|woff2?)$).*)"],
+ *     matcher: ["/((?!api/|_next/|.*\\.[^/]+$).*)"],
  *   };
  *
  * The HTML response goes out WITHOUT `Vary: Accept`, and that is not an
@@ -200,8 +235,11 @@ export function acceptsNothingWeServe(acceptHeader: string | null): boolean {
  *     | grep -iE "^HTTP|content-type"               # 404, text/markdown
  *   curl -sI https://example.com/guides/onboarding | grep -i "^link"
  *                                                   # rel="alternate" to the twin
+ *   curl -sI -H "Accept: image/*" https://example.com/logo.avif | head -1
+ *   curl -sI -H "Accept: image/*" https://example.com/opengraph-image | head -1
+ *                                                   # 200 both: assets never negotiate
  *
- * `isKnownPath` and `acceptsHtml` live in gated-app-404.ts, next to the
+ * `isKnownPath` and `isPageShapedPath` live in gated-app-404.ts, next to the
  * route lists and the test that keeps them honest.
  * The Link header set here reached the wire on a Next.js 16 production build.
  * The host's own preload Link values only exist on the deployed platform, so

@@ -33,22 +33,30 @@ const BLOCKED_PATHS = [
  * moment the channel is growing. Re-check the list periodically: agents appear
  * and rename themselves.
  *
- * Note the pairs: GPTBot indexes for training and retrieval, ChatGPT-User is the
- * live fetch made while answering a person. Blocking the second breaks citation
- * even if the first is allowed.
+ * OpenAI and Anthropic each run three tokens with separate jobs, and each can be
+ * allowed or blocked on its own:
+ *   - training:      GPTBot, ClaudeBot. Blocking keeps content out of future models.
+ *   - search index:  OAI-SearchBot, Claude-SearchBot. These decide whether the site
+ *                    appears in ChatGPT and Claude search answers, so blocking them
+ *                    is what removes the citation, not blocking the training bot.
+ *   - user fetch:    ChatGPT-User, Claude-User, Perplexity-User. A page fetched
+ *                    because a person asked; OpenAI states robots.txt may not apply.
+ * Sources: https://developers.openai.com/api/docs/bots and
+ * https://support.claude.com/en/articles/8896518. `anthropic-ai` is a legacy
+ * token neither page lists.
  */
 const AI_BOTS = [
   "GPTBot",
-  "ChatGPT-User",
   "OAI-SearchBot",
+  "ChatGPT-User",
   "ClaudeBot",
-  "anthropic-ai",
+  "Claude-SearchBot",
   "Claude-User",
   "PerplexityBot",
   "Perplexity-User",
   "Google-Extended",
-  "CCBot",
   "Applebot-Extended",
+  "CCBot",
   "meta-externalagent",
 ];
 
@@ -78,7 +86,7 @@ export default function robots(): MetadataRoute.Robots {
  *   curl -s https://example.com/robots.txt
  *   curl -sI https://example.com/api/og?title=test | head -1     # expect 200
  * Then fetch a page as an AI agent to confirm nothing upstream blocks by UA:
- *   curl -sI -A "ChatGPT-User" https://example.com/ | head -1
+ *   curl -sI -A "OAI-SearchBot" https://example.com/ | head -1
  * A WAF or CDN bot rule can block these agents regardless of what this file says,
  * which is the most common reason a correct robots.txt still results in no
  * crawling. Check the edge configuration too.

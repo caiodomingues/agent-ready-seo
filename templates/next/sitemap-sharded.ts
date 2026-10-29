@@ -12,6 +12,8 @@
  * The index and the shards derive from the SAME function, so they can never
  * disagree about how many shards exist. That is the whole point of this file:
  * an index advertising a shard that 404s is worse than no index.
+ *
+ * Each ---------- banner is a separate file; both route files export `GET`.
  */
 
 /* ---------- src/lib/sitemap.ts ---------- */
@@ -26,16 +28,25 @@ export function absoluteUrl(path: string): string {
   return `${SITE_URL}${path}`;
 }
 
-/** Shard 0 is core; shards 1..n are entities. */
+/** Shard 0 is core; shards 1..n are entities. No entities means shard 0 alone. */
 export async function generateShards(): Promise<Array<{ id: number }>> {
   const entities = await listSitemapEntities();
-  const shards = Math.max(1, Math.ceil(entities.length / ENTITIES_PER_SHARD));
+  const shards = Math.ceil(entities.length / ENTITIES_PER_SHARD);
   return Array.from({ length: shards + 1 }, (_, id) => ({ id }));
+}
+
+/**
+ * Canonical spellings only: "01.xml", "1.5.xml" or "1e0.xml" would otherwise
+ * reach the slice as a duplicate URL, an overlapping block, or NaN.
+ */
+export function parseShardId(segment: string): number | null {
+  const match = /^(0|[1-9]\d*)\.xml$/.exec(segment);
+  return match ? Number(match[1]) : null;
 }
 
 export async function getShardData(id: number): Promise<MetadataRoute.Sitemap | null> {
   const entities = await listSitemapEntities();
-  const shards = Math.max(1, Math.ceil(entities.length / ENTITIES_PER_SHARD));
+  const shards = Math.ceil(entities.length / ENTITIES_PER_SHARD);
   if (id < 0 || id > shards) return null;
 
   if (id === 0) return getCorePages();
@@ -49,14 +60,31 @@ export async function getShardData(id: number): Promise<MetadataRoute.Sitemap | 
   }));
 }
 
+const XML_ESCAPES: Record<string, string> = {
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  "'": "&apos;",
+  '"': "&quot;",
+};
+
+export function escapeXml(value: string): string {
+  return value.replace(/[&<>'"]/g, (c) => XML_ESCAPES[c]);
+}
+
+/** YYYY-MM-DD, or null when the value does not parse: no lastmod beats a false one. */
+export function toLastmod(value: string | Date | undefined): string | null {
+  if (value === undefined) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10);
+}
+
 export function renderSitemap(entries: MetadataRoute.Sitemap): string {
   const urls = entries
     .map((e) => {
-      const lastmod =
-        e.lastModified instanceof Date
-          ? `\n    <lastmod>${e.lastModified.toISOString().slice(0, 10)}</lastmod>`
-          : "";
-      return `  <url>\n    <loc>${e.url}</loc>${lastmod}\n  </url>`;
+      const day = toLastmod(e.lastModified);
+      const lastmod = day ? `\n    <lastmod>${day}</lastmod>` : "";
+      return `  <url>\n    <loc>${escapeXml(e.url)}</loc>${lastmod}\n  </url>`;
     })
     .join("\n");
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
@@ -87,12 +115,15 @@ export async function generateStaticParams() {
   return (await generateShards()).map(({ id }) => ({ id: `${id}.xml` }));
 }
 
-export async function GET_SHARD(
+// Ids outside generateStaticParams 404 at the router instead of rendering on demand.
+export const dynamicParams = false;
+
+export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ): Promise<Response> {
-  const { id } = await params;
-  const data = await getShardData(Number(id.replace(/\.xml$/, "")));
+  const id = parseShardId((await params).id);
+  const data = id === null ? null : await getShardData(id);
   if (!data) return new Response("Not Found", { status: 404 });
 
   return new Response(renderSitemap(data), {
@@ -105,12 +136,15 @@ export async function GET_SHARD(
 
 /* VERIFY
  *   curl -s https://example.com/sitemap.xml | grep -c "<sitemap>"
- *   for i in 0 1 2; do curl -s https://example.com/sitemap/$i.xml | grep -c "<loc>"; done
- * Every shard the index lists must return 200 with a non-zero count.
+ *   for i in 0 1 2; do curl -s https://example.com/sitemap/$i.xml | grep -o "<loc>" | wc -l; done
+ * Every shard the index lists must return 200 with a non-zero count, and a
+ * malformed or out-of-range id must 404:
+ *   for i in abc 01 1.5 9999; do curl -s -o /dev/null -w "%{http_code}\n" https://example.com/sitemap/$i.xml; done
  */
 
 /* PORTING
  * Nothing here is framework-specific except the route file layout. The rules
  * that travel: one source of truth for shard count, deterministic slicing,
- * 404 for out-of-range ids, and headroom under the 50k cap.
+ * 404 for malformed and out-of-range ids, escaped <loc> values, and headroom
+ * under the 50k cap.
  */

@@ -31,6 +31,7 @@ hundred lines of routing and headers, not a platform feature.
 | `next/llms-txt.ts` | `llms.txt` and `llms-full.txt`, generated from live content |
 | `next/dataset-jsonld.ts` | `Dataset` markup and the shared organization `@id` |
 | `next/index-basket.ts` | Fixed basket and the aggregation guards behind a published figure |
+| `next/gated-app-404.ts` | Unknown paths answer 404 behind a default-deny auth gate: the gated-prefix list shared with `robots.txt`, `isKnownPath`, and the HTML or markdown 404 |
 | `next/first-touch.ts` | Attribution that survives AI referrals without breaking caching |
 | `generic/contract.http` | Every endpoint as request and expected response, including `Accept` negotiation, the 406 and the negotiated 404 |
 | `generic/express-md-route.js` | The agent layer in plain Node |
@@ -40,7 +41,7 @@ hundred lines of routing and headers, not a platform feature.
 
 - Replace `SITE_URL` with the canonical host, including the `www` decision.
 - Replace the example content sources (`getGuide`, `getPublishedPosts`,
-  `comparableCompetitors`, `editorialEntries`) with the project's real ones. Never ship a template's
+  `editorialEntries`) with the project's real ones. Never ship a template's
   placeholder data.
 - Keep comments that explain a constraint. Drop comments that narrate the
   template. The test: would the next reader rediscover this the hard way?
@@ -48,7 +49,7 @@ hundred lines of routing and headers, not a platform feature.
 
 ## Verifying
 
-Every template ends with a verification block. Run those against a production
+Most templates end with a verification block. Run those against a production
 build, not a dev server: caching behavior, bundling of content files and font
 loading in image routes all differ, and all three produce failures that are
 invisible locally.

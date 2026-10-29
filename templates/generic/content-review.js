@@ -12,10 +12,13 @@
  *     dependency, and the date someone reviewed it.
  *   - The check fails when: an entry has no review; the content changed since
  *     the review; a dependency changed since the review; the dependency set
- *     changed; the manifest names an entry that no longer exists.
+ *     changed; a dependency file is missing; the manifest names an entry that
+ *     no longer exists.
  *   - It warns (or fails with --strict-age) when the periodic review is overdue.
  *   - Recording a review requires an explicit, non-future date. There is no
  *     "record with today's date" shortcut, because the date is a claim.
+ *     "Today" is the calendar date in --timezone=<IANA name> or REVIEW_TIMEZONE,
+ *     UTC when neither is set.
  *
  * The failure this exists for: the site advertised a limit and a figure for
  * months after the code that enforced them changed, and nothing in the build
@@ -27,6 +30,7 @@
  *   node content-review.js --record=blog:slug --reviewed-at=2026-09-13
  *   node content-review.js --record-all --reviewed-at=2026-09-13
  *   node content-review.js --strict-age                      # overdue is a failure
+ *   node content-review.js --timezone=America/Sao_Paulo      # whose "today"
  */
 
 const { createHash } = require("node:crypto");
@@ -83,20 +87,34 @@ function fingerprint(text) {
   return createHash("sha256").update(text.replace(/\r\n/g, "\n")).digest("hex");
 }
 
+/** A dependency that no longer exists hashes to null, so it is reported, not thrown. */
 function snapshot(entry) {
   return {
     contentHash: fingerprint(entry.content),
     dependencies: Object.fromEntries(
-      entry.dependencies.map((file) => [file, fingerprint(readFileSync(file, "utf8"))]),
+      entry.dependencies.map((file) => [
+        file,
+        existsSync(file) ? fingerprint(readFileSync(file, "utf8")) : null,
+      ]),
     ),
   };
+}
+
+function isCalendarDate(text) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return false;
+  // Date.parse rolls 2026-02-30 over to March instead of rejecting it.
+  const d = new Date(`${text}T00:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === text;
 }
 
 /* -------------------------------- main -------------------------------- */
 
 const args = process.argv.slice(2);
 const flag = (name) => args.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
-const today = new Date().toISOString().slice(0, 10);
+// en-CA formats as YYYY-MM-DD.
+const today = new Intl.DateTimeFormat("en-CA", {
+  timeZone: flag("timezone") ?? process.env.REVIEW_TIMEZONE ?? "UTC",
+}).format(new Date());
 
 const manifest = existsSync(MANIFEST) ? JSON.parse(readFileSync(MANIFEST, "utf8")) : {};
 const entries = editorialEntries();
@@ -105,15 +123,19 @@ const record = flag("record")?.split(",");
 const recordAll = args.includes("--record-all");
 if (record || recordAll) {
   const date = flag("reviewed-at");
-  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(date)) || date > today) {
-    throw new Error("--reviewed-at=YYYY-MM-DD is required, and cannot be in the future.");
+  if (!date || !isCalendarDate(date) || date > today) {
+    throw new Error("--reviewed-at=YYYY-MM-DD is required, must be a real date, and cannot be in the future.");
   }
   if (record?.some((id) => !entries.some((e) => e.id === id))) {
     throw new Error("Unknown entry in --record.");
   }
   for (const entry of entries) {
     if (recordAll || record?.includes(entry.id)) {
-      manifest[entry.id] = { reviewedAt: date, ...snapshot(entry) };
+      const current = snapshot(entry);
+      // A review cannot attest to a file that is not there.
+      const missing = Object.keys(current.dependencies).filter((f) => current.dependencies[f] === null);
+      if (missing.length) throw new Error(`${entry.id}: dependency missing: ${missing.join(", ")}`);
+      manifest[entry.id] = { reviewedAt: date, ...current };
     }
   }
   writeFileSync(MANIFEST, JSON.stringify(manifest, null, 2) + "\n", "utf8");
@@ -133,7 +155,8 @@ for (const entry of entries) {
     problems.push(`${entry.id}: content or metadata changed since ${review.reviewedAt}`);
   }
   for (const [file, hash] of Object.entries(current.dependencies)) {
-    if (review.dependencies[file] !== hash) problems.push(`${entry.id}: re-review after change in ${file}`);
+    if (hash === null) problems.push(`${entry.id}: dependency missing: ${file}`);
+    else if (review.dependencies[file] !== hash) problems.push(`${entry.id}: re-review after change in ${file}`);
   }
   if (Object.keys(review.dependencies).some((file) => !(file in current.dependencies))) {
     problems.push(`${entry.id}: dependency set changed since the review`);

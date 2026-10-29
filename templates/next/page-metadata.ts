@@ -12,7 +12,7 @@
 
 import type { Metadata } from "next";
 import { getGuide } from "@/content/guides";
-import { hasMarkdownTwin, renderTitle, withYear } from "@/lib/seo-metadata";
+import { hasMarkdownTwin, ogImageUrl, renderTitle, withYear } from "@/lib/seo-metadata";
 
 const SITE_URL = "https://example.com";
 const SITE_NAME = "Site";
@@ -44,7 +44,8 @@ export async function generateMetadata({
   if (!guide) return {};
 
   const url = `${SITE_URL}/guides/${slug}`;
-  const headline = withYear(guide.title);
+  // The year of the data the guide quotes; evergreen guides leave it unset.
+  const headline = withYear(guide.title, guide.dataYear);
 
   return {
     // `absolute` bypasses the layout template. Whether this family carries the
@@ -67,6 +68,8 @@ export async function generateMetadata({
       siteName: SITE_NAME,
       title: guide.title,
       description: guide.description,
+      // One parameterized template for every page's image, served under /api:
+      // robots.txt must allow /api/og or no preview renders (see robots.ts).
       images: [ogImageUrl(guide.title, guide.description, guide.category)],
       publishedTime: guide.publishDate,
       modifiedTime: guide.updatedAt,
@@ -78,20 +81,6 @@ export async function generateMetadata({
       description: guide.description,
     },
   };
-}
-
-/**
- * One image template for the whole site, parameterized. Re-skinning the template
- * re-skins every page's image with no per-page work.
- *
- * The route lives under /api, so robots.txt must allow it explicitly or no
- * preview renders anywhere. See robots.ts.
- */
-export function ogImageUrl(title: string, description?: string, tag?: string): string {
-  const q = new URLSearchParams({ title });
-  if (description) q.set("description", description);
-  if (tag) q.set("tag", tag);
-  return `${SITE_URL}/api/og?${q.toString()}`;
 }
 
 /* Pages that must NOT be indexed (login, account, transactional confirmations)
