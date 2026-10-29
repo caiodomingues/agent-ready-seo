@@ -11,7 +11,7 @@
         "Twins excluded from the sitemap; rel=alternate added per page",
         "llms.txt generated from content, with question map and when-to-use section",
         "llms.txt does not promise twins for page types that lack them",
-        "One registry feeds rewrites, negotiation, rel=alternate and llms.txt",
+        "The proposed llms.txt generator reads the twin registry (no hardcoded section paths), and the same registry feeds rewrites, negotiation and rel=alternate",
         "Mentions Accept negotiation and that Next.js drops Vary on the HTML response",
         "Verification is against a production build with curl, not the dev server"
       ],
@@ -67,10 +67,12 @@
       "expected_output": "Should treat this as an experiment: keep a control group rather than changing all 18, register the change (deploy date, pages, control, hypothesis, metric, read date), take a baseline export and a conversions-per-click baseline before the deploy, and read at 28 days excluding the deploy day. Should insist on measuring the rendered <title> (layout suffix and year included), decide the suffix per family, and put variants in an override map keyed by path so reverting is deleting entries. Should warn that a tool-shaped title must be backed by a page that delivers the result to an anonymous visitor, and should check the production page first. Should note that a segment scheduled to publish mid-window needs its own arm. Should reference templates/next/seo-metadata.ts and references/measurement.md.",
       "assertions": [
         "Keeps a control group instead of changing every page",
-        "Registers the experiment with a baseline taken before the deploy",
-        "Measures the rendered title, not the raw string, and decides the suffix per family",
+        "Adds a register row with the arms, the control and the deploy date",
+        "Takes the baseline export before the deploy, including conversions per click",
+        "Measures rendered title length from a crawl of production, not the string in the code",
+        "States a suffix policy for each page family the change touches, not only one",
         "Variants live in an override map keyed by path with experiment id and date",
-        "Checks that the page delivers what a tool-shaped title promises",
+        "Requires the page to deliver, to an anonymous visitor, what the tool-shaped title promises before the title ships",
         "Reads at 28 days, excluding the deploy day, by family and arm",
         "Handles a segment that publishes inside the window as its own arm"
       ],
@@ -81,12 +83,12 @@
       "prompt": "Audit our site for AEO and GEO problems before we hand it to an agency. It has a blog, a set of calculators, a public price index on a subdomain, and a logged-in app. The production URL is in the repo's .env as SITE_URL; if you can't reach it, tell me what you would check and how.",
       "expected_output": "Should read references/pitfalls.md and use its checklist. Should verify against the deployed site with curl rather than against code: canonical host, robots.txt including AI agents and the social image route, unknown-path 404, sitemap count and absence of .md URLs, lastmod honesty, twin headers, llms.txt claims against reality, rendered titles against the limit, cache-control on public pages, structured data against visible claims, the shared organization @id across the subdomain, about and contact pages, first-touch capture and its schema. Should verify each finding before reporting it, distinguishing deliberate deviations from bugs. Should propose the inventory crawl and an external readiness scan, recording failed check IDs.",
       "assertions": [
-        "Works from the pitfalls checklist, top to bottom",
+        "Covers every checklist section: indexing and crawl, duplication, content quality, structured data, agent layer, titles and metadata, measurement",
         "Verifies against the deployed site, not the repository",
         "Checks rendered titles, cache-control and unknown-path status, not only robots and sitemap",
         "Checks the organization @id is shared with the subdomain",
         "Checks structured data claims against visible claims by reading",
-        "Verifies each finding and distinguishes deliberate deviations from bugs",
+        "Names at least one deviation that may be deliberate (such as a twin kept out of the sitemap or a hub redirected on purpose) and says to confirm intent before reporting it",
         "Recommends an inventory crawl and an external scan with failed IDs recorded"
       ],
       "files": []
@@ -100,8 +102,9 @@
         "Negotiates the unknown-path 404 by Accept, backed by a tested route list",
         "Does not build an API, OpenAPI spec, MCP server or OAuth inside this task",
         "Asks the user about WebMCP, discovery files, Wikidata/sameAs and address instead of deciding",
-        "Presents each question with a default and the cost of the other answer",
-        "Distinguishes the applicability-weighted score from the per-question view"
+        "Every question names a default and a concrete cost of the non-default answer, not a generic one-liner",
+        "Distinguishes the applicability-weighted score from the per-question view",
+        "Asks which score view to track instead of choosing one"
       ],
       "files": []
     },
@@ -114,7 +117,8 @@
         "Presents each question with a default and the cost of the other answer",
         "Defaults the title year to the data's period, not the current year",
         "Does not credit the model as author, and names the fabricated-authorship risk of an invented analyst",
-        "Keeps the year token conditional on the title budget"
+        "Keeps the year token conditional on the title budget",
+        "States that a person must actually review model drafts before putting a name on them"
       ],
       "files": []
     },
