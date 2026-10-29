@@ -11,7 +11,9 @@
  * handler. They agree only when all five read this one list. A route that
  * negotiates without a twin turns a page that opens fine in a browser into a
  * 404 for an agent; a head that announces a twin that is not served is an
- * llms.txt promise that 404s, one page at a time.
+ * llms.txt promise that 404s, one page at a time. The proxy reads it through
+ * twin-status.ts (md-route.ts), which adds the per-slug existence check a
+ * pattern cannot make.
  *
  * Two files: the registry (dependency-free, because next.config.ts and the
  * proxy both import it; proxy.ts was middleware.ts before Next 16) and the
@@ -88,31 +90,42 @@ const PAGE_MATCHERS = MD_TWIN_ROUTES.filter(
   (r): r is MdTwinRoute & { page: string } => r.page !== null,
 ).map((r) => ({ re: toRegExp(r.page), md: r.md, page: r.page }));
 
+export interface MdTwinMatch {
+  /** The registry pattern that matched, e.g. "/guides/:slug". */
+  page: string;
+  /** The concrete twin URL. */
+  md: string;
+  params: Record<string, string>;
+}
+
 /**
- * The twin URL for a concrete page path, or null when the page has none.
- * Read by the proxy (negotiation), by seo-metadata.ts (rel=alternate)
- * and by llms.txt (which sections to claim).
+ * The registry entry a concrete page path matches. A pattern matches any slug,
+ * so a match says the URL shape has a twin, not that this slug has a document:
+ * the proxy asks twin-status.ts (md-route.ts) for that.
  */
-export function mdTwinFor(pathname: string): string | null {
+export function mdTwinMatch(pathname: string): MdTwinMatch | null {
   const path = pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
   if (PAGES_WITHOUT_TWIN.has(path)) return null;
 
-  for (const { re, md, page } of PAGE_MATCHERS) {
-    if (!re.test(path)) continue;
-    if (!md.includes(":")) return md;
+  const match = PAGE_MATCHERS.find(({ re }) => re.test(path));
+  if (!match) return null;
 
-    const pageSegments = page.split("/");
-    const pathSegments = path.split("/");
-    return md
-      .split("/")
-      .map((seg) => {
-        if (!seg.startsWith(":")) return seg;
-        const value = pathSegments[pageSegments.indexOf(seg.replace(/\.md$/, ""))];
-        return seg.endsWith(".md") ? `${value}.md` : value;
-      })
-      .join("/");
-  }
-  return null;
+  const pathSegments = path.split("/");
+  const params: Record<string, string> = {};
+  match.page.split("/").forEach((seg, i) => {
+    if (seg.startsWith(":")) params[seg.slice(1)] = pathSegments[i];
+  });
+  const md = match.md.replace(/:([A-Za-z_]\w*)/g, (_, name: string) => params[name]);
+  return { page: match.page, md, params };
+}
+
+/**
+ * The twin URL for a concrete page path, or null when the URL shape has none.
+ * Read by seo-metadata.ts (rel=alternate, after the page's own lookup) and by
+ * llms.txt (which sections to claim).
+ */
+export function mdTwinFor(pathname: string): string | null {
+  return mdTwinMatch(pathname)?.md ?? null;
 }
 
 /* ---------------------------- next.config.ts ---------------------------- */

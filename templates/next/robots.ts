@@ -2,72 +2,109 @@
  * robots.txt with AI crawlers explicitly allowed.
  *
  * CONTRACT:
- *   - Application routes disallowed for everyone.
+ *   - Application routes disallowed for everyone: /api/ and every gated
+ *     prefix, read from the same list the session gate reads.
  *   - The social image route allowed explicitly, because it sits under a
  *     disallowed prefix and link-preview fetchers cannot render it otherwise.
- *   - Named AI user agents get their own permissive rule, so the intent is
- *     visible in review and a future blanket rule cannot catch them silently.
+ *   - AI search and user-triggered agents get their own permissive groups, so
+ *     the intent is visible in review and a future blanket rule cannot catch
+ *     them silently.
+ *   - AI training crawlers sit in a separate group, allowed by default.
+ *     Whether to opt out is the user's decision (SKILL.md, "Decisions that
+ *     belong to the user"), not the template's.
  *   - Sitemap declared.
  *
- * Drop at src/app/robots.ts.
+ * Drop at src/app/robots.ts. Without a session gate, drop the import and keep
+ * the /api/ line.
  */
 
 import type { MetadataRoute } from "next";
+import { GATED_APP_PREFIXES } from "@/lib/app-prefixes";
 
 const SITE_URL = "https://example.com";
 
-/** Authenticated and transactional areas. No search value, real crawl cost. */
-const BLOCKED_PATHS = [
-  "/api/",
-  "/account/",
-  "/admin/",
-  "/checkout/",
-  "/dashboard/",
-  "/settings/",
+/**
+ * Authenticated areas: no search value, real crawl cost. A transactional area
+ * missing from GATED_APP_PREFIXES (/checkout, /account) belongs in that list,
+ * not here, or the gate and the crawl rules disagree.
+ */
+const DISALLOW = ["/api/", ...GATED_APP_PREFIXES.map((p) => `/${p}/`)];
+
+/*
+ * AI user agents by role. Re-check the lists periodically: agents appear and
+ * rename themselves. Sources:
+ *   developers.openai.com/api/docs/bots
+ *   support.claude.com/en/articles/8896518
+ *   support.apple.com/en-us/119829
+ *   docs.perplexity.ai/guides/bots
+ *   developer.amazon.com/amazonbot
+ *   docs.mistral.ai/robots
+ *   duckduckgo.com/duckduckgo-help-pages/results/duckassistbot
+ *   developers.google.com/crawling/docs/crawlers-fetchers/google-common-crawlers
+ */
+
+/**
+ * Search and citation: these decide whether the site appears, with a link, in
+ * AI answers. Blocking one is what removes the citation. Googlebot, Bingbot
+ * and Applebot follow their normal groups (here `*`); Microsoft has no
+ * separate AI token, because Copilot grounds on Bingbot's index.
+ */
+const AI_SEARCH_BOTS = [
+  "OAI-SearchBot",
+  "Claude-SearchBot",
+  "PerplexityBot",
+  "Amzn-SearchBot",
+  "MistralAI-Index",
+  "DuckAssistBot",
 ];
 
 /**
- * AI crawlers we explicitly want reading and citing the public content.
- *
- * This is a strategic choice. Blocking them guarantees never being cited, at the
- * moment the channel is growing. Re-check the list periodically: agents appear
- * and rename themselves.
- *
- * OpenAI and Anthropic each run three tokens with separate jobs, and each can be
- * allowed or blocked on its own:
- *   - training:      GPTBot, ClaudeBot. Blocking keeps content out of future models.
- *   - search index:  OAI-SearchBot, Claude-SearchBot. These decide whether the site
- *                    appears in ChatGPT and Claude search answers, so blocking them
- *                    is what removes the citation, not blocking the training bot.
- *   - user fetch:    ChatGPT-User, Claude-User, Perplexity-User. A page fetched
- *                    because a person asked; OpenAI states robots.txt may not apply.
- * Sources: https://developers.openai.com/api/docs/bots and
- * https://support.claude.com/en/articles/8896518. `anthropic-ai` is a legacy
- * token neither page lists.
+ * User-triggered: a page fetched because a person asked. OpenAI says robots.txt
+ * rules may not apply to ChatGPT-User, and Perplexity says Perplexity-User
+ * generally ignores robots.txt; the group states intent for the rest.
  */
-const AI_BOTS = [
-  "GPTBot",
-  "OAI-SearchBot",
+const AI_USER_FETCHERS = [
   "ChatGPT-User",
-  "ClaudeBot",
-  "Claude-SearchBot",
   "Claude-User",
-  "PerplexityBot",
   "Perplexity-User",
+  "meta-externalfetcher",
+  "Amzn-User",
+  "MistralAI-User",
+];
+
+/**
+ * Training only. Blocking these keeps content out of future models and does
+ * not affect citation. Google-Extended has no user agent of its own: it
+ * controls Gemini training and grounding outside Search, with no effect on
+ * Search, AI Overviews or AI Mode. Applebot-Extended does not crawl either: it
+ * controls Apple's use of what Applebot fetched.
+ */
+const AI_TRAINING_BOTS = [
+  "GPTBot",
+  "ClaudeBot",
   "Google-Extended",
   "Applebot-Extended",
   "CCBot",
   "meta-externalagent",
+  "Amazonbot",
+  "MistralAI-Training",
 ];
 
 export default function robots(): MetadataRoute.Robots {
   // More specific than the /api/ block, so the image endpoint stays reachable.
   const allow = ["/", "/api/og"];
 
+  // A crawler that matches a named group ignores `*` entirely (RFC 9309), so
+  // every group repeats the disallows or it crawls the app paths.
   return {
     rules: [
-      { userAgent: "*", allow, disallow: BLOCKED_PATHS },
-      ...AI_BOTS.map((bot) => ({ userAgent: bot, allow, disallow: BLOCKED_PATHS })),
+      { userAgent: "*", allow, disallow: DISALLOW },
+      { userAgent: AI_SEARCH_BOTS, allow, disallow: DISALLOW },
+      { userAgent: AI_USER_FETCHERS, allow, disallow: DISALLOW },
+      // The user's call. To opt out of training, replace this rule with
+      // { userAgent: AI_TRAINING_BOTS, disallow: "/" }; keeping `allow: "/"`
+      // beside it would win the tie and opt nothing out.
+      { userAgent: AI_TRAINING_BOTS, allow, disallow: DISALLOW },
     ],
     sitemap: `${SITE_URL}/sitemap.xml`,
   };
@@ -85,6 +122,8 @@ export default function robots(): MetadataRoute.Robots {
 /* VERIFY
  *   curl -s https://example.com/robots.txt
  *   curl -sI https://example.com/api/og?title=test | head -1     # expect 200
+ * Every gated prefix appears as a Disallow in every group:
+ *   curl -s https://example.com/robots.txt | grep -c "^Disallow: /dashboard/"   # one per group
  * Then fetch a page as an AI agent to confirm nothing upstream blocks by UA:
  *   curl -sI -A "OAI-SearchBot" https://example.com/ | head -1
  * A WAF or CDN bot rule can block these agents regardless of what this file says,
@@ -94,6 +133,7 @@ export default function robots(): MetadataRoute.Robots {
 
 /* PORTING
  * Any framework: serve a static text file with the same rules. The generated
- * form here exists only so the bot list lives in code and can be reviewed in a
- * diff rather than edited in a file nobody opens.
+ * form here exists so the bot lists and the disallows live in code, the
+ * disallows read the gate's own list, and both can be reviewed in a diff
+ * rather than edited in a file nobody opens.
  */

@@ -38,6 +38,20 @@ export const dynamic = "force-dynamic";
 export async function GET(): Promise<Response> {
   const guides = getPublishedGuides();
   const posts = getPublishedPosts().sort((a, b) => b.publishDate.localeCompare(a.publishDate));
+  const newestGuide = [...guides].sort((a, b) => b.publishDate.localeCompare(a.publishDate))[0];
+
+  // Examples come from live content: a hand-typed slug 404s the day it is copied.
+  const examples = [
+    ...(newestGuide ? [`${SITE_URL}/guides/${newestGuide.slug}.md`] : []),
+    ...(posts[0] ? [`${SITE_URL}/blog/${posts[0].slug}.md`] : []),
+    `${SITE_URL}/index.md (home)`,
+  ].join(", ");
+
+  // Point this at a guide chosen on purpose (a flag on the content object);
+  // the newest one stands in until then.
+  const entryPoint = newestGuide
+    ? `- Best entry point: [${newestGuide.title}](${SITE_URL}/guides/${newestGuide.slug}.md)\n`
+    : "";
 
   // The highest-value block in the file: a question mapped to the page that
   // authoritatively answers it. Cheap to generate if titles are question-shaped.
@@ -71,9 +85,8 @@ export async function GET(): Promise<Response> {
 > One sentence a stranger could quote verbatim about what this site is for.
 
 Markdown for agents: pages in the sections listed below also answer as clean
-markdown by adding \`.md\` to the URL. Examples:
-${SITE_URL}/guides/example.md, ${SITE_URL}/blog/example.md, ${SITE_URL}/index.md
-(home). Hubs have twins too: ${SITE_URL}/guides.md, ${SITE_URL}/blog.md.
+markdown by adding \`.md\` to the URL. Examples: ${examples}.
+Hubs have twins too: ${SITE_URL}/guides.md, ${SITE_URL}/blog.md.
 
 Two or three paragraphs describing the product, who it is for, and the problem it
 solves. Write it for a reader who will never see the site design: no "as you can
@@ -86,8 +99,7 @@ most llms.txt files omit, and generic marketing copy does not read as guidance.
 
 - Use for: <the two or three jobs this site genuinely answers best>
 - Not for: <what is outside scope, so an agent does not waste a fetch>
-- Best entry point for <topic>: ${SITE_URL}/guides/topic.md
-- The data behind the figures: ${SITE_URL}/about-the-data.md
+${entryPoint}- The data behind the figures: ${SITE_URL}/about-the-data.md
 
 ## Questions we answer
 

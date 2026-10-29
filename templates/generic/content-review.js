@@ -30,7 +30,7 @@
  *   node content-review.js --record=blog:slug --reviewed-at=2026-09-13
  *   node content-review.js --record-all --reviewed-at=2026-09-13
  *   node content-review.js --strict-age                      # overdue is a failure
- *   node content-review.js --timezone=America/Sao_Paulo      # whose "today"
+ *   node content-review.js --timezone=Europe/Berlin         # whose "today"
  */
 
 const { createHash } = require("node:crypto");

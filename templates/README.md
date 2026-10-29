@@ -20,14 +20,14 @@ hundred lines of routing and headers, not a platform feature.
 
 | File | Implements |
 | --- | --- |
-| `next/markdown-response.ts` | The shared HTTP wrapper for every `.md` twin, front matter, and the negotiation middleware (twin, 406, negotiated 404, `Link` alternate) |
-| `next/md-route.ts` | A twin route, in both the generated and file-backed shapes |
-| `next/rewrites.ts` | The twin registry, and the rewrites, negotiation and `rel=alternate` that read it |
+| `next/markdown-response.ts` | The shared HTTP wrapper for every `.md` twin (canonical and `describedby` links), front matter, and the proxy: session gate first, then negotiation (twin, 406, negotiated 404, `Link` alternate and `describedby`) |
+| `next/md-route.ts` | A twin route, in both the generated and file-backed shapes; the publish predicate pages and twins share; the per-slug existence check the proxy runs |
+| `next/rewrites.ts` | The twin registry, and the rewrites, negotiation and `rel=alternate` that read it (the proxy through `mdTwinMatch`, which `twin-status.ts` in `md-route.ts` wraps with a per-slug existence check) |
 | `next/page-metadata.ts` | A page consuming the metadata module: canonical, alternate, social image |
 | `next/seo-metadata.ts` | One source for title, description and OG; per-family suffix policy; experiment overrides; the length ratchet test |
-| `next/sitemap.ts` | Sitemap generated from the content registry, with honest `lastmod` |
+| `next/sitemap.ts` | Sitemap generated from the content registry, with honest `lastmod` and no `changefreq` or `priority` |
 | `next/sitemap-sharded.ts` | Index plus shards, for corpora past the 50k cap |
-| `next/robots.ts` | Crawl rules with AI agents explicitly allowed |
+| `next/robots.ts` | Crawl rules: disallows read from the gated-prefix list, AI agents grouped by role (search, user-triggered, training) |
 | `next/llms-txt.ts` | `llms.txt` and `llms-full.txt`, generated from live content |
 | `next/dataset-jsonld.ts` | `Dataset` markup and the shared organization `@id` |
 | `next/index-basket.ts` | Fixed basket and the aggregation guards behind a published figure |
@@ -39,9 +39,10 @@ hundred lines of routing and headers, not a platform feature.
 
 ## Adapting
 
-- Replace `SITE_URL` with the canonical host, including the `www` decision.
+- Replace `SITE_URL` with the canonical host, including the `www` decision,
+  and `SITE_TZ` (`next/md-route.ts`) with the zone whose calendar publishes.
 - Replace the example content sources (`getGuide`, `getPublishedPosts`,
-  `editorialEntries`) with the project's real ones. Never ship a template's
+  `comparableCompetitors`, `editorialEntries`) with the project's real ones. Never ship a template's
   placeholder data.
 - Keep comments that explain a constraint. Drop comments that narrate the
   template. The test: would the next reader rediscover this the hard way?

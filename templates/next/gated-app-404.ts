@@ -3,9 +3,12 @@
  *
  * CONTRACT (framework-neutral):
  *   GET /some-gated-area        (no session) -> 307 /login?callbackUrl=...
+ *   GET /dashboard/export.csv   (no session) -> 307 as well: an extension does
+ *                                               not exempt a gated path
  *   GET /definitely-not-a-page  (no session) -> 404
- *       Accept includes text/html  -> the site's own 404 page, status 404
- *       anything else              -> text/markdown body with recovery links
+ *       Accept names text/html or application/xhtml+xml (q > 0)
+ *                                  -> the site's own 404 page, status 404
+ *       anything else, wildcards too -> text/markdown body with recovery links
  *   GET /api/anything           (no session) -> unchanged (redirect or 401)
  *   GET /logo.avif, /opengraph-image (outside the gated prefixes) -> unchanged
  *   Any authenticated request   -> unchanged
@@ -16,7 +19,8 @@
  * because every path a human types is real.
  *
  * Three pieces: a shared list of gated prefixes, a test that keeps the list
- * honest against the route directory, and the branch in the proxy.
+ * honest against the route directory, and the branch in the proxy. Where the
+ * branch sits relative to negotiation is shown in markdown-response.ts.
  */
 
 // ---------------------------------------------------------------------------
@@ -75,10 +79,23 @@ export function isGatedAppPath(pathname: string): boolean {
 // ---------------------------------------------------------------------------
 //
 // import { readdirSync } from "node:fs";
+// import { join } from "node:path";
 //
-// const dirs = readdirSync("src/app", { withFileTypes: true })
-//   .filter((d) => d.isDirectory() && d.name !== "api" && !d.name.startsWith("("))
-//   .map((d) => d.name);
+// // Route-handler directories whose every URL has an extension
+// // (sitemap/[id] serves /sitemap/0.xml): the proxy passes them through as files.
+// const FILE_ROUTE_DIRS = ["sitemap"];
+//
+// // Route groups add no URL segment, so their children are top-level areas.
+// const topLevel = (dir: string): string[] =>
+//   readdirSync(dir, { withFileTypes: true })
+//     .filter((d) => d.isDirectory())
+//     .flatMap((d) => (d.name.startsWith("(") ? topLevel(join(dir, d.name)) : [d.name]));
+//
+// // Dot-named directories (llms.txt, sitemap.xml) serve one file; _private
+// // folders and @slots are not URL segments.
+// const dirs = topLevel("src/app").filter(
+//   (d) => d !== "api" && !d.includes(".") && !/^[_@]/.test(d) && !FILE_ROUTE_DIRS.includes(d),
+// );
 // const known = new Set([...GATED_APP_PREFIXES, ...PUBLIC_APP_DIRS]);
 //
 // it("covers every route dir", () => expect(dirs.filter((d) => !known.has(d))).toEqual([]));
@@ -126,7 +143,7 @@ export function unauthenticatedResponse(req: NextRequest): NextResponse {
     }
     return new NextResponse(notFoundMarkdown(), {
       status: 404,
-      headers: { "Content-Type": "text/markdown; charset=utf-8" },
+      headers: { "Content-Type": "text/markdown; charset=utf-8", Vary: "Accept" },
     });
   }
 
@@ -140,13 +157,17 @@ export function unauthenticatedResponse(req: NextRequest): NextResponse {
  *   curl -s -o /dev/null -w '%{http_code}\n' $SITE/definitely-not-a-page                        # 404
  *   curl -s -o /dev/null -w '%{http_code}\n' -H "Accept: text/html" $SITE/definitely-not-a-page # 404
  *   curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' $SITE/dashboard                    # 307 .../login
+ *   curl -s -o /dev/null -w '%{http_code}\n' $SITE/dashboard/export.csv                         # 307, not the file
  *   curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' $SITE/api/me                       # unchanged
  *   curl -s -o /dev/null -w '%{http_code}\n' -H "Accept: image/*" $SITE/logo.avif               # 200
  *   curl -s -o /dev/null -w '%{http_code}\n' -H "Accept: image/*" $SITE/opengraph-image         # 200
  *
- * The proxy matcher excludes every path whose last segment has an extension
- * (see markdown-response.ts); isPageShapedPath covers the extensionless
- * metadata routes the matcher still lets through.
+ * The proxy matcher admits paths with an extension so the gate sees them (see
+ * markdown-response.ts). Outside the gated prefixes, isPageShapedPath passes
+ * public files and the extensionless metadata routes through untouched. That
+ * includes an extension path under a directory nobody registered: the proxy
+ * cannot tell it from a file in public/, so the directory test is what closes
+ * that case.
  *
  * PORTING
  * Any middleware that runs before routing can do this. The two things that do

@@ -13,6 +13,7 @@
 import type { Metadata } from "next";
 import { getGuide } from "@/content/guides";
 import { hasMarkdownTwin, ogImageUrl, renderTitle, withYear } from "@/lib/seo-metadata";
+import { isPublished } from "@/lib/publish";
 
 const SITE_URL = "https://example.com";
 const SITE_NAME = "Site";
@@ -41,11 +42,13 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const guide = getGuide(slug);
-  if (!guide) return {};
+  // The page component calls the same predicate before rendering, and so does
+  // the twin route: an unpublished guide is a 404 on every surface.
+  if (!guide || !isPublished(guide)) return {};
 
   const url = `${SITE_URL}/guides/${slug}`;
   // The year of the data the guide quotes; evergreen guides leave it unset.
-  const headline = withYear(guide.title, guide.dataYear);
+  const headline = withYear(guide.title, guide.dataYear, "guides");
 
   return {
     // `absolute` bypasses the layout template. Whether this family carries the
@@ -96,4 +99,8 @@ export async function generateMetadata({
  * What travels less well is the title template: if the framework has no
  * equivalent, build the full title in one helper and call it everywhere, so the
  * doubling bug has a single place to be prevented.
+ *
+ * Social image: `openGraph.images` in the metadata overrides a file-based
+ * opengraph-image.tsx in the same segment (on a Next 16 build only the config
+ * URL is emitted). Use one or the other per route, never both.
  */

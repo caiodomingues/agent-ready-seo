@@ -140,6 +140,11 @@ export const ACQUISITION_MAX_AGE = 60 * 60 * 24 * 90; // 90 days
  * export const config = {
  *   matcher: ["/((?!api/|_next/|.*\\.[^/]+$).*)"],
  * };
+ *
+ * An app has one proxy.ts and one matcher. Merged with the session gate, the
+ * matcher is the wider one in markdown-response.ts, which admits files; then
+ * return `res` early unless isPageShapedPath(pathname) (gated-app-404.ts), or
+ * a non-browser client fetching an image with a foreign Referer gets a cookie.
  */
 
 /* ------------------- persistence at account creation ------------------- */

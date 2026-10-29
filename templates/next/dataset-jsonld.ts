@@ -114,4 +114,8 @@ export function jsonLd(schema: object): string {
  * JSON-LD is a script tag with a JSON body. Nothing here depends on the
  * framework. The only mechanical concern is escaping, which every templating
  * layer solves differently.
+ *
+ * The `distribution` URL is `${url}.md`, which only exists if the twin registry
+ * serves it. Register the dataset page in MD_TWIN_ROUTES (rewrites.ts), or
+ * build the URL with mdTwinFor and drop `distribution` when it returns null.
  */

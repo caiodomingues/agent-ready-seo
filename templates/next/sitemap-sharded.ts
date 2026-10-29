@@ -6,6 +6,9 @@
  *   /sitemap/0.xml     -> core pages (home, hubs, editorial)
  *   /sitemap/{n}.xml   -> entity pages in fixed blocks
  *
+ * <loc> and an honest <lastmod> only: Google ignores <changefreq> and
+ * <priority> (developers.google.com/search/docs/crawling-indexing/sitemaps/build-sitemap).
+ *
  * The protocol caps a file at 50,000 URLs and 50MB uncompressed. Use 40,000 so a
  * growth spurt between deploys cannot push a shard over.
  *
@@ -54,9 +57,7 @@ export async function getShardData(id: number): Promise<MetadataRoute.Sitemap | 
   const start = (id - 1) * ENTITIES_PER_SHARD;
   return entities.slice(start, start + ENTITIES_PER_SHARD).map((e) => ({
     url: absoluteUrl(`/items/${e.slug}`),
-    ...(e.updatedAt ? { lastModified: new Date(e.updatedAt) } : {}),
-    changeFrequency: "weekly" as const,
-    priority: 0.5,
+    ...(e.updatedAt ? { lastModified: e.updatedAt } : {}),
   }));
 }
 

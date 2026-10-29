@@ -67,7 +67,7 @@ export const BASKET: readonly BasketItem[] = [
     refPackLabel: "1 kg",
     include: /^item a\b/,
     // Premium and specialty variants are a different market at a different price.
-    exclude: /\b(organic|light|premium|imported|sample)\b/,
+    exclude: /\b(organic|light|premium|imported|sample)s?\b/,
     minPlausible: 2,
     maxPlausible: 12,
     minPackRefQty: 0.5,

@@ -15,7 +15,8 @@ GET https://example.com/guides/onboarding.md
 # Content-Type: text/markdown; charset=utf-8
 # Cache-Control: public, max-age=3600, s-maxage=3600
 # X-Robots-Tag: all
-# Link: <https://example.com/guides/onboarding>; rel="canonical"
+# Vary: Accept
+# Link: <https://example.com/guides/onboarding>; rel="canonical", <https://example.com/llms.txt>; rel="describedby"
 #
 # ---
 # title: Onboarding guide
@@ -30,6 +31,7 @@ GET https://example.com/guides/onboarding.md
 # - The canonical MUST come from the document, not from the request path.
 # - X-Robots-Tag: all is deliberate. noindex here would also stop AI fetchers
 #   that respect it, which defeats the purpose of publishing the twin.
+# - rel="describedby" names the llms.txt that covers the page (llmstxt.org).
 
 
 ### 2. A missing page is a 404, never an empty 200
@@ -39,6 +41,7 @@ GET https://example.com/guides/does-not-exist.md
 # EXPECTED
 # HTTP/1.1 404 Not Found
 # Content-Type: text/markdown; charset=utf-8
+# Vary: Accept
 #
 # 404 - not found
 #
@@ -71,8 +74,12 @@ GET https://example.com/guides/onboarding
 #
 # EXPECTED (in the headers, appended to any Link the host already sends)
 # Link: <https://example.com/guides/onboarding.md>; rel="alternate"; type="text/markdown"
+# Link: <https://example.com/llms.txt>; rel="describedby"
 #
-# A page without a twin announces nothing, in either place.
+# A page without a twin announces nothing, in either place. That includes a
+# URL that fits a twin pattern but has no document behind it
+# (/guides/does-not-exist): the header is decided before routing, so it needs
+# the same existence check the twin route makes, not just the URL shape.
 
 
 ### 4b. The same URL answers markdown when asked
@@ -113,12 +120,18 @@ Accept: text/markdown
 # EXPECTED
 # HTTP/1.1 404 Not Found
 # Content-Type: text/markdown; charset=utf-8
+# Vary: Accept
 #
 # (the recovery body from section 2)
 #
+# Unknown means no document answers the URL: it matches no page the app
+# serves, and if it fits a twin pattern (/guides/does-not-exist), that pattern
+# has no document for the slug.
+#
 # The same path with Accept: text/html returns the site's HTML 404 page, also
-# with status 404. Rule: Accept includes text/html -> HTML page; anything else,
-# including */* and no header -> markdown body.
+# with status 404. Rule: Accept names text/html or application/xhtml+xml with
+# q > 0 -> HTML page; anything else, including */* and no header -> markdown
+# body.
 
 
 ### 5. The map for models
@@ -153,8 +166,14 @@ GET https://example.com/llms-full.txt
 
 # EXPECTED
 # Content-Type: text/plain; charset=utf-8
-# One file, every published page, generated from the same functions that render
-# the individual twins.
+# Published pages newest first, generated from the same functions that render
+# the individual twins, until a byte budget (about 300 KB) is spent. The newest
+# page is included even when it alone exceeds the budget. Past the budget the
+# file ends with a heading and one link per remaining page:
+#
+# ## More pages, not included above
+# - [Older guide](https://example.com/guides/older.md)
+# ...
 
 
 ### 7. Crawl rules
@@ -168,22 +187,38 @@ GET https://example.com/robots.txt
 # Allow: /
 # Allow: /api/og            <- more specific than the /api/ block
 #
-# User-agent: GPTBot
 # User-agent: OAI-SearchBot
-# User-agent: ChatGPT-User
-# User-agent: ClaudeBot
 # User-agent: Claude-SearchBot
-# User-agent: Claude-User
 # User-agent: PerplexityBot
+# User-agent: Amzn-SearchBot
+# User-agent: MistralAI-Index
+# User-agent: DuckAssistBot
 # Disallow: /api/
 # Disallow: /dashboard/
 # Allow: /
 # Allow: /api/og
 #
+# User-agent: ChatGPT-User
+# User-agent: Claude-User
+# User-agent: Perplexity-User
+# User-agent: meta-externalfetcher
+# User-agent: Amzn-User
+# User-agent: MistralAI-User
+# Disallow: /api/
+# Disallow: /dashboard/
+# Allow: /
+# Allow: /api/og
+#
+# User-agent: GPTBot
+# ...                       <- training-only tokens, a group of their own
+#
 # Sitemap: https://example.com/sitemap.xml
 #
 # A crawler that matches a named group ignores the * group entirely (RFC 9309),
 # so every named group repeats the Disallow lines or it crawls the app paths.
+# The Disallow lines are the gated prefixes, from the same list the session
+# gate reads. Search and user-triggered agents decide citation; the training
+# group does not, and whether to block it is the site owner's decision.
 
 
 ### 8. The sitemap lists HTML only
@@ -223,7 +258,8 @@ Referer: https://chatgpt.com/
 #     | grep -iE "^HTTP|content-type"                                  # 404 text/markdown
 #   curl -sI -H "Accept: text/markdown" https://example.com/guides/onboarding \
 #     | grep -iE "^HTTP|content-type|vary"                             # 200 markdown, Vary
-#   curl -sI https://example.com/guides/onboarding | grep -i "^link"   # alternate to twin
+#   curl -sI https://example.com/guides/onboarding | grep -i "^link"   # alternate, describedby
+#   curl -sI https://example.com/guides/does-not-exist | grep -ic 'rel="alternate"'   # expect 0
 #   curl -s  https://example.com/llms.txt | wc -c                      # under budget
 #   curl -s  https://example.com/llms.txt | grep -oE "https://[^ )]+\.md" | sort -u \
 #     | while read u; do echo "$(curl -s -o /dev/null -w '%{http_code}' "$u") $u"; done

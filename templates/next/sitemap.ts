@@ -4,7 +4,9 @@
  * CONTRACT:
  *   - HTML URLs only. Alternate renderings (.md twins) stay out on purpose:
  *     listing both is asking to be assessed for duplicate content.
- *   - `lastmod` only when a real content date backs it.
+ *   - `lastmod` only when a real content date backs it, as YYYY-MM-DD.
+ *   - No changefreq or priority: Google ignores both
+ *     (developers.google.com/search/docs/crawling-indexing/sitemaps/build-sitemap).
  *   - Publication filtering uses the same function the routes use, so the
  *     sitemap can never advertise a page that 404s.
  *
@@ -18,15 +20,24 @@ import { comparableCompetitors } from "@/content/competitors";
 
 const SITE_URL = "https://example.com";
 
+/**
+ * The content date as YYYY-MM-DD, the form sitemap-sharded.ts writes. Next
+ * prints a Date as a full timestamp, which claims a time of day the content
+ * date does not have.
+ */
+function toLastmod(contentDate: string): string {
+  return contentDate.slice(0, 10);
+}
+
 export default function sitemap(): MetadataRoute.Sitemap {
   // Static entries first, then generated ones. Keeping them in one array makes
   // the total count checkable against the deployed sitemap.
   const core: MetadataRoute.Sitemap = [
-    { url: SITE_URL, changeFrequency: "weekly", priority: 1 },
-    { url: `${SITE_URL}/guides`, changeFrequency: "monthly", priority: 0.7 },
-    { url: `${SITE_URL}/blog`, changeFrequency: "weekly", priority: 0.7 },
-    { url: `${SITE_URL}/data`, changeFrequency: "monthly", priority: 0.7 },
-    { url: `${SITE_URL}/about-the-data`, changeFrequency: "monthly", priority: 0.7 },
+    { url: SITE_URL },
+    { url: `${SITE_URL}/guides` },
+    { url: `${SITE_URL}/blog` },
+    { url: `${SITE_URL}/data` },
+    { url: `${SITE_URL}/about-the-data` },
   ];
 
   const guides: MetadataRoute.Sitemap = getPublishedGuides().map((g) => {
@@ -35,30 +46,24 @@ export default function sitemap(): MetadataRoute.Sitemap {
       url: `${SITE_URL}/guides/${g.slug}`,
       // Conditional, never `new Date()`. A per-deploy timestamp claims the whole
       // site changes every deploy, which teaches crawlers to ignore the field.
-      ...(contentDate ? { lastModified: new Date(contentDate) } : {}),
-      changeFrequency: "monthly" as const,
-      priority: 0.6,
+      ...(contentDate ? { lastModified: toLastmod(contentDate) } : {}),
     };
   });
 
   const posts: MetadataRoute.Sitemap = getPublishedPosts().map((p) => ({
     url: `${SITE_URL}/blog/${p.slug}`,
-    lastModified: new Date(p.updatedAt ?? p.publishDate),
-    changeFrequency: "monthly",
-    priority: 0.8,
+    lastModified: toLastmod(p.updatedAt ?? p.publishDate),
   }));
 
   const tags: MetadataRoute.Sitemap = getAllTags().map((t) => ({
     url: `${SITE_URL}/blog/tag/${t.slug}`,
-    changeFrequency: "weekly",
-    priority: 0.5,
   }));
 
   // `comparableCompetitors` excludes your own entry. Generating from the raw
   // registry produces a self-comparison page in the sitemap and the hub.
   const comparisons: MetadataRoute.Sitemap = comparableCompetitors().flatMap((c) => [
-    { url: `${SITE_URL}/vs/${c.slug}`, changeFrequency: "monthly" as const, priority: 0.6 },
-    { url: `${SITE_URL}/alternatives/${c.slug}`, changeFrequency: "monthly" as const, priority: 0.6 },
+    { url: `${SITE_URL}/vs/${c.slug}` },
+    { url: `${SITE_URL}/alternatives/${c.slug}` },
   ]);
 
   return [...core, ...guides, ...posts, ...tags, ...comparisons];

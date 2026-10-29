@@ -69,12 +69,18 @@ function negotiate(accept) {
 }
 
 // Unknown paths follow a different rule than pages (contract section 4d): only
-// an explicit text/html gets the HTML 404, and */* or no header gets markdown.
+// text/html or application/xhtml+xml named with q > 0 gets the HTML 404, and
+// */* or no header gets markdown.
 function acceptsHtml(accept) {
-  return parseAccept(accept).some((r) => r.range === "text/html" && r.q > 0);
+  return parseAccept(accept).some(
+    (r) => (r.range === "text/html" || r.range === "application/xhtml+xml") && r.q > 0,
+  );
 }
 
 /* ---------------------------- the wrapper ---------------------------- */
+
+// The llms.txt that covers every twin (llmstxt.org).
+const DESCRIBED_BY = `<${SITE_URL}/llms.txt>; rel="describedby"`;
 
 function sourceUrlOf(doc) {
   const m = /^source_url:\s*(\S+)\s*$/m.exec(doc);
@@ -86,13 +92,14 @@ function sendMarkdown(res, body) {
     "Content-Type": "text/markdown; charset=utf-8",
     "Cache-Control": "public, max-age=3600, s-maxage=3600",
     "X-Robots-Tag": "all",
+    Vary: "Accept",
   });
 
   // Canonical from the document, never from req.path. Rebuilding it from the
   // request means a routing bug produces a self-referential canonical, which is
   // the exact failure this header prevents.
   const canonical = sourceUrlOf(body);
-  if (canonical) res.set("Link", `<${canonical}>; rel="canonical"`);
+  res.set("Link", canonical ? `<${canonical}>; rel="canonical", ${DESCRIBED_BY}` : DESCRIBED_BY);
 
   res.send(body);
 }
@@ -108,7 +115,7 @@ function sendMarkdown404(req, res) {
     `- ${SITE_URL}/sitemap.xml`,
     "",
   ].join("\n");
-  res.status(404).set("Content-Type", "text/markdown; charset=utf-8").send(body);
+  res.status(404).vary("Accept").set("Content-Type", "text/markdown; charset=utf-8").send(body);
 }
 
 /* ---------------------------- generators ---------------------------- */
@@ -167,6 +174,7 @@ app.get("/guides/:slug", (req, res, next) => {
   if (variant === "markdown") return sendMarkdown(res, guideToMarkdown(guide));
 
   res.append("Link", `<${SITE_URL}/guides/${guide.slug}.md>; rel="alternate"; type="text/markdown"`);
+  res.append("Link", DESCRIBED_BY);
   res.type("html").send(guideToHtml(guide));
 });
 

@@ -5,9 +5,11 @@
  *   200 -> Content-Type: text/markdown; charset=utf-8
  *          Cache-Control: public, max-age=3600, s-maxage=3600
  *          X-Robots-Tag: all
- *          Link: <html-url>; rel="canonical"
- *   404 -> Content-Type: text/markdown; charset=utf-8, non-empty body with
- *          recovery links
+ *          Vary: Accept
+ *          Link: <html-url>; rel="canonical", <site>/llms.txt; rel="describedby"
+ *   404 -> Content-Type: text/markdown; charset=utf-8
+ *          Vary: Accept
+ *          non-empty body with recovery links
  *
  * Two decisions worth keeping when adapting this:
  *
@@ -36,11 +38,15 @@ This path does not exist. Try:
 - ${SITE_URL}/guides (nearest hub)
 `;
 
+/** The llms.txt that covers every twin (llmstxt.org). */
+export const DESCRIBED_BY = `<${SITE_URL}/llms.txt>; rel="describedby"`;
+
 export function markdownResponse(body: string | null): Response {
   if (body === null) {
     return new Response(NOT_FOUND_BODY, {
       status: 404,
-      headers: { "Content-Type": "text/markdown; charset=utf-8" },
+      // The proxy also returns this 404 for an unknown path, chosen by Accept.
+      headers: { "Content-Type": "text/markdown; charset=utf-8", Vary: "Accept" },
     });
   }
 
@@ -54,7 +60,7 @@ export function markdownResponse(body: string | null): Response {
   };
 
   const canonical = sourceUrlOf(body);
-  if (canonical) headers.Link = `<${canonical}>; rel="canonical"`;
+  headers.Link = canonical ? `<${canonical}>; rel="canonical", ${DESCRIBED_BY}` : DESCRIBED_BY;
 
   return new Response(body, { headers });
 }
@@ -154,9 +160,9 @@ export function acceptsNothingWeServe(acceptHeader: string | null): boolean {
 }
 
 /**
- * Picks the 404 body: true only when the client names HTML itself with q > 0.
- * A wildcard does not count, so curl and most agents get the markdown 404 and
- * browsers get the site's 404 page.
+ * Picks the 404 body: true only when the client names text/html or
+ * application/xhtml+xml itself with q > 0. A wildcard does not count, so curl
+ * and most agents get the markdown 404 and browsers get the site's 404 page.
  */
 export function acceptsHtml(acceptHeader: string | null): boolean {
   const ranges = parseAccept(acceptHeader);
@@ -168,26 +174,39 @@ export function acceptsHtml(acceptHeader: string | null): boolean {
 
 /*
  * In src/proxy.ts (Next 15 and earlier: src/middleware.ts exporting
- * `middleware`). The matcher must exclude every path whose last segment has an
- * extension: `.md`, so a request that already carries the suffix is never
- * renegotiated into a twin of the twin, and public files, so an image fetch
- * never meets the negotiated 404. The cost is that a page slug containing a
- * dot (`/blog/v1.2-release`) gets no negotiation; keep slugs dot-free.
+ * `middleware`). The matcher lets paths with an extension through on purpose:
+ * on a gated site `/dashboard/export.csv` must meet the session gate, and a
+ * matcher that skips extensions serves it to anyone. `isPageShapedPath` keeps
+ * extension paths out of everything after the gate instead: `.md`, so a
+ * request that already carries the suffix is never renegotiated into a twin of
+ * the twin, and public files, so an image fetch never meets the negotiated
+ * 404. The costs: one proxy invocation per asset request (a site without a
+ * gate can use the narrower matcher in first-touch.ts), and a page slug
+ * containing a dot (`/blog/v1.2-release`) gets no negotiation; keep slugs
+ * dot-free.
  *
  *   export function proxy(req: NextRequest) {
  *     const { pathname } = req.nextUrl;
  *     const accept = req.headers.get("accept");
  *
- *     // Metadata routes (/opengraph-image, /icon) have no extension and match
- *     // page patterns such as /blog/:slug; without this an image fetch gets 406.
- *     // On a gated site the session gate runs before this early return.
+ *     // Gated site only (gated-app-404.ts; hasSession is the app's own check).
+ *     // First, before any branch that returns NextResponse.next().
+ *     if (!hasSession(req) && (isGatedAppPath(pathname) || (!isKnownPath(pathname) && !mdTwinFor(pathname)))) {
+ *       return unauthenticatedResponse(req);
+ *     }
+ *
+ *     // Public files, `.md` URLs and metadata routes (/opengraph-image, /icon:
+ *     // no extension, and they match page patterns such as /blog/:slug, so
+ *     // without this an image fetch gets 406).
  *     if (!isPageShapedPath(pathname)) return NextResponse.next();
  *
- *     const twin = mdTwinFor(pathname);                // registry in rewrites.ts
- *     if (!twin) {
- *       // Registry first, so a page with a twin never reaches this branch.
- *       // isKnownPath is only as trustworthy as the directory test behind it.
- *       if (!isKnownPath(pathname) && !acceptsHtml(accept)) return markdownResponse(null);
+ *     const twin = twinStatus(pathname);               // md-route.ts
+ *     if (!twin?.live) {
+ *       // A pattern match with no document behind it (/guides/does-not-exist)
+ *       // is as unknown as an unrouted path. isKnownPath is only as
+ *       // trustworthy as the directory test behind it.
+ *       const unknown = twin !== null || !isKnownPath(pathname);
+ *       if (unknown && !acceptsHtml(accept)) return markdownResponse(null);
  *       return NextResponse.next();
  *     }
  *
@@ -199,19 +218,20 @@ export function acceptsHtml(acceptHeader: string | null): boolean {
  *     }
  *
  *     if (prefersMarkdown(accept)) {
- *       const res = NextResponse.rewrite(new URL(twin, req.url));
+ *       const res = NextResponse.rewrite(new URL(twin.md, req.url));
  *       res.headers.set("Vary", "Accept");
  *       return res;
  *     }
  *
  *     const res = NextResponse.next();
  *     // append, not set: the host may add its own Link values (preloads).
- *     res.headers.append("Link", `<${SITE_URL}${twin}>; rel="alternate"; type="text/markdown"`);
+ *     res.headers.append("Link", `<${SITE_URL}${twin.md}>; rel="alternate"; type="text/markdown"`);
+ *     res.headers.append("Link", DESCRIBED_BY);
  *     return res;
  *   }
  *
  *   export const config = {
- *     matcher: ["/((?!api/|_next/|.*\\.[^/]+$).*)"],
+ *     matcher: ["/((?!api/|_next/).*)"],
  *   };
  *
  * The HTML response goes out WITHOUT `Vary: Accept`, and that is not an
@@ -223,31 +243,38 @@ export function acceptsHtml(acceptHeader: string | null): boolean {
  * rewritten to `/x.md` and never reads the cache entry for `/x`. The markdown
  * variant is the one that must carry Vary, and does.
  *
- * `mdTwinFor` must read the same registry the rewrites use. A route that
- * negotiates but has no twin returns 404 for a page that renders fine in a
- * browser, which is the worst possible outcome of adding this.
+ * `twinStatus` reads the same registry the rewrites use, then asks whether a
+ * document exists for the slug. A route that negotiates but has no twin
+ * returns 404 for a page that renders fine in a browser, which is the worst
+ * possible outcome of adding this; a header that announces a twin for a slug
+ * with no document is an llms.txt promise that 404s. The gate line can keep
+ * the pattern-only `mdTwinFor`: a missing slug under a twin pattern still gets
+ * its 404 from the branch above.
  *
  *   curl -sI -H "Accept: text/markdown" https://example.com/guides/onboarding \
  *     | grep -iE "^HTTP|content-type|vary"          # 200, text/markdown, Vary: Accept
  *   curl -sI -H "Accept: text/markdown" https://example.com/guides/onboarding.md \
- *     | grep -iE "^HTTP"                            # 200, not renegotiated
+ *     | grep -iE "^HTTP|^link"                      # 200, not renegotiated; canonical, describedby
  *   curl -s -D - -o /dev/null -H "Accept: text/markdown" https://example.com/nothing-here \
- *     | grep -iE "^HTTP|content-type"               # 404, text/markdown
+ *     | grep -iE "^HTTP|content-type|vary"          # 404, text/markdown, Vary: Accept
  *   curl -sI https://example.com/guides/onboarding | grep -i "^link"
- *                                                   # rel="alternate" to the twin
+ *                                                   # rel="alternate" to the twin, rel="describedby"
+ *   curl -sI https://example.com/guides/does-not-exist | grep -ic 'rel="alternate"'
+ *                                                   # 0: no twin announced for a missing slug
  *   curl -sI -H "Accept: image/*" https://example.com/logo.avif | head -1
  *   curl -sI -H "Accept: image/*" https://example.com/opengraph-image | head -1
  *                                                   # 200 both: assets never negotiate
  *
- * `isKnownPath` and `isPageShapedPath` live in gated-app-404.ts, next to the
- * route lists and the test that keeps them honest.
+ * `isKnownPath`, `isPageShapedPath`, `isGatedAppPath` and
+ * `unauthenticatedResponse` live in gated-app-404.ts, next to the route lists
+ * and the test that keeps them honest.
  * The Link header set here reached the wire on a Next.js 16 production build.
  * The host's own preload Link values only exist on the deployed platform, so
  * check there that both survive.
  */
 
 /* PORTING
- * Express / Hono / Fastify: set the same four headers on the response object;
+ * Express / Hono / Fastify: set the same five headers on the response object;
  *   see ../generic/express-md-route.js.
  * Astro:   src/pages/[...slug].md.ts exporting GET, returning the same Response.
  * Rails:   respond_to { |f| f.md { render plain: body, content_type: "text/markdown" } }
@@ -257,4 +284,10 @@ export function acceptsHtml(acceptHeader: string | null): boolean {
  * Static:  emit .md files at build time; set headers in the CDN config. The
  *          canonical Link header is the part static hosts most often cannot do,
  *          in which case keep the twins out of the sitemap and rely on llms.txt.
+ * Content-Signal: if the user decided to publish a Content-Signal preference,
+ *          send the same `Content-Signal` header on the twin responses. A
+ *          Cloudflare zone with Markdown for Agents adds
+ *          `Content-Signal: ai-train=yes, search=yes, ai-input=yes` to the
+ *          markdown it serves when the origin sends none
+ *          (developers.cloudflare.com/fundamentals/reference/markdown-for-agents/).
  */

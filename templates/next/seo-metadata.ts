@@ -298,4 +298,9 @@ export function listAllPages(): PageSeo[] {
  * title template; if it has none, `renderTitle` is already the whole title and
  * every page calls it. The twin registry dependency (`mdTwinFor`) is the same
  * one the rewrites use; see rewrites.ts.
+ *
+ * `toMetadata` sets `openGraph.images`, which overrides a file-based
+ * opengraph-image.tsx in the same segment (on a Next 16 build only the config
+ * URL is emitted). A route with its own opengraph-image.tsx drops the
+ * `images` fields instead of carrying both.
  */

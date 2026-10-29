@@ -2,8 +2,10 @@
  * A `.md` twin route handler, in the two shapes you need: one generated from
  * structured content, one reading a hand-maintained mirror from disk.
  *
- * Two files (Next.js App Router):
+ * Four files (Next.js App Router):
  *   src/lib/markdown-export.ts              <- the generators; llms-full.txt imports them too
+ *   src/lib/publish.ts                      <- the publish predicate pages and twins share
+ *   src/lib/twin-status.ts                  <- whether a slug has a twin; read by the proxy
  *   src/app/api/md/guides/[slug]/route.ts   <- reached via the rewrite in rewrites.ts
  *
  * The generators live in a lib module because a route file may export only
@@ -122,15 +124,66 @@ type Post = {
   bodyMarkdown: string;
 };
 
-export function isPublished(item: { publishDate?: string }): boolean {
-  return !item.publishDate || item.publishDate <= new Date().toISOString().slice(0, 10);
+/* -------------------------- src/lib/publish.ts -------------------------- */
+
+/** The IANA zone whose calendar decides "today". An example: use the site's own. */
+export const SITE_TZ = "Europe/Berlin";
+
+/**
+ * The one publish predicate. The page, its twin, the sitemap, llms.txt and the
+ * proxy's twin check all call it, so the twin 404s exactly when the page does:
+ * a UTC "today" on one side and a local one on the other disagree for hours
+ * on every publication date.
+ */
+export function isPublished(item: { publishDate?: string }, now = new Date()): boolean {
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: SITE_TZ }).format(now);
+  return !item.publishDate || item.publishDate <= today;
+}
+
+/* ------------------------ src/lib/twin-status.ts ------------------------ */
+
+import { mdTwinMatch } from "@/lib/md-twins";
+// In its own file: import { getGuide } from "@/content/guides";
+import { getPublishedPosts, getAllTags } from "@/lib/blog-data";
+import { comparableCompetitors } from "@/content/competitors";
+// In its own file: import { isPublished } from "@/lib/publish";
+
+/**
+ * Whether a parameterized registry pattern has a document for these params,
+ * by the same test its twin handler applies. One entry per parameterized
+ * pattern in MD_TWIN_ROUTES (the /data patterns there need theirs from the
+ * project's data source). A pattern absent here is never live: the proxy
+ * neither negotiates nor announces its twin, and the .md URL still answers
+ * through the rewrite. The proxy runs this on every page request, so keep each
+ * check as cheap as the page's own lookup. One that needs a database round
+ * trip is too slow here: leave its pattern out and let page metadata announce
+ * the twin after the page's own lookup. On Next 15 and earlier the proxy runs
+ * on the Edge runtime, so these imports must be Edge-safe.
+ */
+export const TWIN_EXISTS: Record<string, (params: Record<string, string>) => boolean> = {
+  "/guides/:slug": ({ slug }) => {
+    const guide = getGuide(slug);
+    return guide ? isPublished(guide) : false;
+  },
+  "/blog/:slug": ({ slug }) => getPublishedPosts().some((p) => p.slug === slug),
+  "/blog/tag/:tag": ({ tag }) => getAllTags().some((t) => t.slug === tag),
+  "/vs/:slug": ({ slug }) => comparableCompetitors().some((c) => c.slug === slug),
+};
+
+/** The registry match for a page path, and whether its twin answers 200. */
+export function twinStatus(pathname: string): { md: string; live: boolean } | null {
+  const match = mdTwinMatch(pathname);
+  if (!match) return null;
+  if (!match.page.includes(":")) return { md: match.md, live: true };
+  return { md: match.md, live: TWIN_EXISTS[match.page]?.(match.params) ?? false };
 }
 
 /* --------------- src/app/api/md/guides/[slug]/route.ts --------------- */
 
 import { markdownResponse } from "@/lib/markdown-response";
 import { getGuide } from "@/content/guides";
-// In its own file: import { guideToMarkdown, isPublished } from "@/lib/markdown-export";
+// In its own file: import { guideToMarkdown } from "@/lib/markdown-export";
+// and import { isPublished } from "@/lib/publish";
 
 // The twin must not be cached at build time when its content depends on data
 // that changes without a deploy. For fully static content, drop this and let it
@@ -147,6 +200,17 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
 
   return markdownResponse(guideToMarkdown(guide));
 }
+
+/* VERIFY, next to the registry check in rewrites.ts:
+ *
+ *   for (const r of MD_TWIN_ROUTES) {
+ *     if (r.page?.includes(":") && !(r.page in TWIN_EXISTS)) problems.push(`${r.page}: no existence check`);
+ *   }
+ *   expect(twinStatus("/guides/does-not-exist")?.live).toBe(false);
+ *
+ * And the page agrees with its twin on a publication date: a guide dated
+ * today in SITE_TZ answers 200 on both URLs, one dated tomorrow 404s on both.
+ */
 
 /* PORTING
  * The route only has three jobs: resolve the slug, refuse unknown ones, and
