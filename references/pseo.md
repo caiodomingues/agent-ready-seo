@@ -202,8 +202,9 @@ export function getPublished<T extends { publishDate?: string }>(all: T[]): T[] 
 }
 ```
 
-Everything that enumerates pages, the sitemap, hubs, `llms.txt`, internal links,
-must call the same filter. A page live in the sitemap but 404 from the hub, or
+Everything that enumerates pages, the sitemap, hubs, `llms.txt`, internal links
+and the markdown twins, must call the same filter (`isPublished` in the
+`src/lib/publish.ts` section of `templates/next/md-route.ts`). A page live in the sitemap but 404 from the hub, or
 vice versa, is a common and avoidable inconsistency.
 
 Two consequences of date-gated publication that only show up later:

@@ -162,9 +162,10 @@ person instead of the organization.
 **Negotiating a URL that is already the twin.** With both the `.md` suffix and
 `Accept` negotiation live, an agent may send the `.md` URL and the header. A
 matcher whose slug pattern is `[^/]+` captures `x.md` as the slug, resolves a
-twin for the twin, and 404s on a URL that works without the header. Exclude
-the suffix in the middleware matcher so negotiation never sees it, and test
-that pair.
+twin for the twin, and 404s on a URL that works without the header. Skip
+negotiation for any path with an extension inside the proxy, after the session
+gate (not in the matcher, which would also exempt gated files such as
+`/dashboard/export.csv`), and test that pair.
 
 **Titles measured in the code, cut in the result.** A layout template adds
 the site name, a helper adds the year, and a title reviewed at 48 characters

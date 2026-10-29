@@ -81,10 +81,13 @@ home is a wasted response for both readers.
 reaches the framework's HTML 404 page, whatever the client asked for. Scanners
 probe exactly that path, and an agent that sent `Accept: text/markdown` gets an
 HTML document it did not ask for. Use the same rule as the gated-app branch
-below: a client whose `Accept` includes `text/html` gets the site's 404 page,
+below: a client whose `Accept` names `text/html` or `application/xhtml+xml`
+with q > 0 gets the site's 404 page (a wildcard does not count),
 anything else gets the markdown body, and both answer 404. The middleware can
 only do this when it knows which paths exist: consult the twin registry first,
-so a page with a twin never reaches the 404 branch, then the route list and
+so a page with a twin never reaches the 404 branch (a URL that fits a twin
+pattern but has no document behind it, such as `/guides/does-not-exist`,
+counts as unknown), then the route list and
 the two-direction test from that section, even on a site with no login at all.
 Verified on a Next.js 16 production build: the middleware's markdown 404
 reaches the wire unchanged.
@@ -229,9 +232,11 @@ the code sets.
 live and `llms.txt` documents both, a compliant agent may send the `.md` URL
 *and* `Accept: text/markdown`. A page matcher whose slug is `[^/]+` captures
 `x.md` as the slug and resolves a twin for the twin, so the request 404s on a URL
-that works fine without the header. The cleanest fix is to keep the suffix out
-of the middleware entirely: exclude `.md` (and every other static extension)
-in the matcher, so negotiation only ever sees page URLs. Test that exact pair.
+that works fine without the header. Keep the suffix out of negotiation
+inside the proxy: after the session gate, pass every path whose last segment
+has an extension straight through. Do not exclude extensions in the matcher on
+a gated site: that also exempts `/dashboard/export.csv` from the gate, which a
+production build served with 200 and no session. Test that exact pair.
 Negotiate `GET` and `HEAD` both; a probe that only sends `HEAD` is otherwise
 told the feature is absent.
 
@@ -267,7 +272,7 @@ gated area redirects to login; a path that is nothing gets a 404.
    new area not registered fails, a registered area that no longer exists fails.
    That is what makes the list trustworthy enough to gate on.
 3. **Unknown and unauthenticated → 404, never `next()`.** For a browser
-   (`Accept` includes `text/html`), rewrite to a path that cannot be a route
+   (`Accept` names `text/html` or `application/xhtml+xml` with q > 0), rewrite to a path that cannot be a route
    (`/.not-found`), so the framework renders its own 404 page with a real 404
    status. For anything else, return the markdown 404 body from the contract
    above. Because the branch never falls through to the handler, an area that
@@ -311,7 +316,9 @@ Link: <https://example.com/guides/onboarding.md>; rel="alternate"; type="text/ma
 scanners also look for `rel="sitemap"` in that header; it is not in the IANA
 registry, so treat it as a scanner convention, harmless but not a standard.
 Read the twin URL from the same registry as everything else, so a page without
-a twin announces nothing. Append to `Link` rather than replacing it: hosts add
+a twin announces nothing. A pattern matches any slug, so also check that the
+slug has a document (the twin route's own test); otherwise a 404 under a twin
+pattern announces a twin that 404s too. Append to `Link` rather than replacing it: hosts add
 their own `Link` values (font and style preloads) on the way out, and a
 replacement would drop them. Whether the two merge depends on the host, so
 check the deployed response; a local production build does not reproduce the
