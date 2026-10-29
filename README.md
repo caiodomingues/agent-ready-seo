@@ -115,13 +115,12 @@ following this skill completely will not produce a perfect score. See
 
 ## Provenance
 
-Extracted from shipping three production properties: a content and tooling site
-with roughly 400 pages in its sitemap, a data property with roughly 53,000, and
-a gated SaaS whose only public surface is a landing page and a blog. Every rule
-here has a failure behind it that was hit and fixed, not a best practice copied
-from a list. Examples are anonymized, and the counts are re-read from the live
-sitemaps when this file changes, for the reason `references/pitfalls.md` gives
-about claims that age.
+Extracted from shipping production properties: a content and tooling site with
+a few hundred pages, a data property with tens of thousands, and a gated SaaS
+whose only public surface is a landing page and a blog, plus a full external
+audit of a larger SaaS marketing site. Every rule here has a failure behind it
+that was hit and fixed, not a best practice copied from a list. Examples are
+anonymized.
 
 ## Contributing
 

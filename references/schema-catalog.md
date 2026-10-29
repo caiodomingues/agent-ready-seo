@@ -92,9 +92,10 @@ disagree with the actual hierarchy.
 Only for questions genuinely answered on the page, visible to the user. Do not
 mark up questions that exist solely in the JSON-LD.
 
-Rich-result eligibility for FAQ has narrowed considerably over time, so treat the
-value as mostly AEO: it is a clean, machine-readable question-to-answer mapping,
-which is exactly the shape an answer engine wants.
+Google no longer shows FAQ rich results: the feature stopped appearing on
+7 May 2026 and its documentation was removed. The value left is AEO only. It
+is a clean, machine-readable question-to-answer mapping, which is exactly the
+shape an answer engine wants. Do not promise a search snippet for it.
 
 **Feed the block and the visible list from one array.** The failure above (a
 declared answer contradicting the page) only exists when the FAQ is typed twice.
@@ -105,16 +106,17 @@ audited. Strip rich-text tags before they reach the block.
 ### Speakable
 
 `SpeakableSpecification` on an article, with a CSS selector (`h1`,
-`[data-speakable]`) that wraps the one sentence answering the question the
-article exists for. Cheap, and it is a direct hint to voice assistants and
-summarizers about which line to lift. Mark exactly one sentence; marking the
-whole body says nothing.
+`[data-speakable]`) that wraps the two or three sentences answering the
+question the article exists for. Google treats it as a beta for news content,
+read aloud by Google Assistant to users in the US with English settings, and
+asks for about 20 to 30 seconds of text per section. Outside that scope, it is
+a cheap hint with no documented consumer. Marking the whole body says nothing.
 
 ### HowTo
 
 For genuine procedures with ordered steps. Each `HowToStep` needs a name and text
-that match the visible step. Same narrowing as FAQ on the rich-result side, same
-retained value for models.
+that match the visible step. Google's search gallery no longer lists a HowTo
+rich result, so, as with FAQ, the value is the structure a model can read.
 
 ### Dataset
 

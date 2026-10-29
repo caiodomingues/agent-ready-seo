@@ -33,13 +33,16 @@ Two related failure modes worth naming precisely, because teams often think they
 are avoiding one while building the other.
 
 **Thin content:** a templated page whose unique portion is a few substituted
-words. It answers nothing a generic page would not answer.
+words. It answers nothing a generic page would not answer. At volume, Google's
+spam policies call it *scaled content abuse*: many pages generated primarily
+to manipulate rankings rather than to help, whatever produced them.
 
 **Doorway page:** the same page duplicated across a dimension (usually
 geographic) with no dimension-specific substance, existing to capture "X in
-<place>" queries and funnel everyone to the same destination.
+<place>" queries and funnel everyone to the same destination. Google's policy
+name is *doorway abuse*.
 
-Both are explicitly targeted by search quality systems, and both are also
+Both are named in Google's spam policies, and both are also
 increasingly useless for AEO, because a model summarizing your page has nothing
 to extract.
 
@@ -169,8 +172,10 @@ Concrete devices, cheapest first:
 
 ## Publishing cadence
 
-Shipping four hundred pages in one day is a spike that looks like what
-low-quality mass generation looks like. Two mitigations, both worth doing:
+Google's policies judge purpose and value, not publishing rate. Shipping
+four hundred pages in one day is still a bad idea for operational reasons:
+nobody reviews four hundred pages well, and indexing arrives in an
+unpredictable trickle you cannot read. Two practices, both worth doing:
 
 - **Schedule publication by date on the content object.** The route and the
   sitemap filter on it, so pages appear over weeks without any deploy ceremony.
@@ -180,8 +185,11 @@ low-quality mass generation looks like. Two mitigations, both worth doing:
   dump.
 
 ```ts
+// publishDate is a date only (YYYY-MM-DD), compared in the site's timezone.
+const SITE_TZ = "America/Sao_Paulo";
+
 export function getPublished<T extends { publishDate?: string }>(all: T[]): T[] {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: SITE_TZ }).format(new Date());
   return all.filter((x) => !x.publishDate || x.publishDate <= today);
 }
 ```
@@ -226,7 +234,7 @@ calculator should link back to the guide.
 
 **Measure the orphan share, do not estimate it.** The number is the fraction
 of sitemap URLs that at least one crawlable page links to. On a data property
-with some forty-four thousand entity pages, the only internal path to them
+with tens of thousands of entity pages, the only internal path to them
 was a search route, and the search route was disallowed in `robots.txt`: six
 percent of the sitemap was reachable by a link. Two hub axes fixed most of it,
 a category hub (entities grouped by what they are, with a median per unit and

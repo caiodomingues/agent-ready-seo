@@ -321,7 +321,8 @@ the code, because the gap between them is the point.
 
 ### Measurement
 
-- [ ] Search console verified and receiving data
+- [ ] Search console property added before launch (collection starts when it is
+      added) and receiving data
 - [ ] First-touch capture live **and** its schema change applied
 - [ ] No signal classified as `direct`; unattributed is a visible category
 - [ ] Attribution write cannot break signup
@@ -331,6 +332,16 @@ the code, because the gap between them is the point.
 - [ ] Every title or template change has a row in the experiment register, a
       baseline taken before the deploy, and arms decided in one module
 - [ ] Console reads exclude the deploy day and split hosts
+
+### Citable data
+
+- [ ] The basket is fixed and versioned; a change bumps the version and says so
+- [ ] Figures are medians over distinct entities, with a minimum sample per cell,
+      sanity bounds per item and a coverage floor below which the page 404s
+- [ ] A public methodology page states sources, limitations and how to cite
+- [ ] The index has published on schedule for every period since launch
+- [ ] Each publication pings IndexNow after the deploy is live, and the sitemap
+      `lastmod` carries the period's date for Google
 
 ### Claims
 

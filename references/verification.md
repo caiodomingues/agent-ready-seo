@@ -59,25 +59,30 @@ not after: a build is the expensive part.
 
 ## Loop 1: your own checks
 
-Every template in this skill ends with a verification block. Consolidated, the
+Most templates in this skill end with a verification block. Consolidated, the
 pass looks like this. Run it against a production build; a dev server hides
 caching, bundling and font-loading failures that only appear once deployed.
 
 ```sh
 SITE=https://example.com
+CT='%{http_code} %{content_type}\n'
 
 # Agent layer
-curl -sI  $SITE/guides/onboarding.md | grep -iE "^HTTP|content-type|^link"
+curl -sI  $SITE/guides/onboarding.md | grep -iE "^HTTP|content-type|^link|x-robots-tag"
 curl -s   $SITE/guides/does-not-exist.md | head -1        # 404 body, not HTML
 curl -s   $SITE/index.md | grep source_url                # canonical is "/", not "/index"
-curl -s -o /dev/null -w '%{http_code}\n' -H "Accept: text/markdown" $SITE/guides/onboarding      # 200 markdown
-curl -s -o /dev/null -w '%{http_code}\n' -H "Accept: text/markdown" $SITE/guides/onboarding.md   # 200, not renegotiated
-curl -s -o /dev/null -w '%{http_code}\n' -H "Accept: application/json" $SITE/guides/onboarding   # 406
+curl -s -o /dev/null -w "$CT" -H "Accept: text/markdown" $SITE/guides/onboarding      # 200 text/markdown
+curl -s -o /dev/null -w "$CT" -H "Accept: text/markdown" $SITE/guides/onboarding.md   # 200 text/markdown, not renegotiated
+curl -s -o /dev/null -w "$CT" -H "Accept: application/json" $SITE/guides/onboarding   # 406
+curl -sI -H "Accept: text/markdown" $SITE/guides/onboarding | grep -iE "^HTTP|content-type|vary"   # HEAD negotiates too; Vary: Accept
+curl -sI $SITE/guides/onboarding | grep -i "^link"        # rel=alternate type=text/markdown, appended
+curl -s $SITE/llms.txt | wc -c                            # under the map budget
 
 # Soft-404 on the whole domain, not just the twin. A gated app's auth
 # middleware is the usual culprit: 307 to /login, which answers 200.
-curl -s -o /dev/null -w '%{http_code}\n' $SITE/definitely-not-a-page              # 404
-curl -s -o /dev/null -w '%{http_code}\n' -H "Accept: text/html" $SITE/definitely-not-a-page   # 404, HTML body
+curl -s -o /dev/null -w "$CT" $SITE/definitely-not-a-page                          # 404 text/markdown
+curl -s -o /dev/null -w "$CT" -H "Accept: text/html" $SITE/definitely-not-a-page   # 404 text/html
+curl -s -o /dev/null -w "$CT" -H "Accept: image/*" $SITE/favicon.ico               # 200, assets never get the markdown 404
 
 # Every URL the map advertises must exist
 curl -s $SITE/llms.txt | grep -oE "https://[^ )]+\.md" | sort -u \
@@ -85,7 +90,7 @@ curl -s $SITE/llms.txt | grep -oE "https://[^ )]+\.md" | sort -u \
   | grep -v "^200" || echo "all advertised twins resolve"
 
 # Sitemap: HTML only, count matches the registry
-curl -s $SITE/sitemap.xml | grep -c "<loc>"
+curl -s $SITE/sitemap.xml | grep -o "<loc>" | wc -l          # an index lists shards: count each shard
 curl -s $SITE/sitemap.xml | grep -c "\.md</loc>"          # expect 0
 
 # Crawl rules, including the image route under a blocked prefix
@@ -302,15 +307,17 @@ Worth doing, with limits.
 # Nightly or weekly, not per commit. Scans are cached and are not free.
 npx is-agentic "$SITE" --json > report.json
 
-jq '{score: .score, failed: [.issues[] | select(.status != "pass") | .id]}' report.json
+# `issues` lists only checks that did not pass; `result` is "failed" or "partial".
+jq '{score: .score, eligible: .eligible_checks,
+     failed: [.issues[] | {id, result}] | sort_by(.id)}' report.json > snapshot.json
 ```
 
-Then compare against the previous run and alert on:
+Then diff `snapshot.json` against the previous run and alert on:
 
 - the score dropping by more than a few points
-- any check moving from pass to fail
-- a check that previously applied becoming not-applicable, which usually means a
-  surface stopped being detected rather than stopped existing
+- an ID that appears in `failed`, or moves from `partial` to `failed`
+- `eligible_checks` falling, which usually means a surface stopped being
+  detected rather than stopped existing
 
 **Do not gate deploys on a third-party score.** An outage, a methodology change
 or a rate limit would then block shipping for reasons unrelated to the change

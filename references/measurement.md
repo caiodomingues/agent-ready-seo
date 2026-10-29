@@ -34,11 +34,10 @@ does not click, and searches your name three days later. That arrives as branded
 organic search, and no amount of instrumentation attributes it to the assistant.
 
 **Link behavior changes without notice.** In 2026 the largest assistant began
-converting brand mentions into inline links to the brand's **home page**. Reported
-effects were substantial: the share of assistant referral traffic landing on home
-pages rose from roughly 4% to roughly 24%, with business software seeing the
-largest gains and e-commerce essentially flat, because product intent routes
-through a shopping surface rather than a brand mention.
+converting brand mentions into inline links to the brand's **home page**, so a
+larger share of assistant referrals lands there. Expect it most for business
+software and least for e-commerce, where product intent routes through a
+shopping surface rather than a brand mention.
 
 Two consequences worth designing for:
 
@@ -138,8 +137,8 @@ that would have told you.
 
 ## Search console
 
-Configure it before the traffic, since most consoles only retain data from
-verification onward. Beyond checking positions, the two views that matter:
+Configure it before the traffic. Google's console collects from the moment the
+property is added, even before verification, and shows nothing earlier. Beyond checking positions, the two views that matter:
 
 - **Coverage or indexing:** which of the generated pages are known, which are
   excluded, and under what reason. This is where a sitemap gap or a canonical
@@ -162,10 +161,10 @@ on impressions and average position, not on sessions.
   export. Split by host in the report: fold `www` and apex into one page,
   and keep the subdomain apart, or its pages land in "other" and inflate the
   denominator.
-- The page export caps at a thousand rows. On a site with a few hundred
-  generated pages, the tail is missing from the export, and a family that
-  lives in the tail is under-counted. Export with a URL filter per family
-  when the total exceeds the cap.
+- The page export caps at a thousand rows. Once more than a thousand pages
+  have impressions, the tail is missing from the export, and a family that
+  lives in the tail is under-counted. Export with a URL filter per family, or
+  read through the API or the bulk export, when the total exceeds the cap.
 - The export does not carry its own period. Put the date range in the file
   name, and keep every export: the next read needs the previous one.
 - The number format follows the console's locale (`1,2%` and `5,8` in one

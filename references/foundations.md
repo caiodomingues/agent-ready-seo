@@ -53,7 +53,7 @@ For scale, sharding and the 50,000 URL cap, see `references/pseo.md`.
 
 ## robots.txt
 
-Three jobs, in order of importance.
+Four jobs, in order of importance.
 
 **1. Keep crawlers out of the application.** Authenticated areas, dashboards,
 settings, checkout. They have no search value and consume crawl budget on a site
@@ -61,23 +61,37 @@ whose public pages are the point.
 
 **2. Let AI crawlers in, deliberately.** Declare them by name with an explicit
 allow, both so the intent is visible in review and so a future blanket rule does
-not catch them by accident.
+not catch them by accident. A crawler that matches a named group ignores the
+`*` group (RFC 9309), so repeat the application disallows inside it.
 
 ```
 User-agent: GPTBot
+User-agent: OAI-SearchBot
 User-agent: ChatGPT-User
 User-agent: ClaudeBot
-User-agent: anthropic-ai
+User-agent: Claude-SearchBot
+User-agent: Claude-User
 User-agent: PerplexityBot
+User-agent: Perplexity-User
 User-agent: Google-Extended
-User-agent: CCBot
 User-agent: Applebot-Extended
+User-agent: CCBot
 Allow: /
+Disallow: /dashboard/
+Disallow: /api/
+Allow: /api/og
 ```
 
-This is a strategic choice, not an oversight. Blocking these agents guarantees you
-are never cited by them. If the plan is to be the source, the reader has to be
-allowed in. The list changes over time, so re-check it when revisiting the file.
+Each operator separates the jobs. For OpenAI, `GPTBot` is training,
+`OAI-SearchBot` decides inclusion in ChatGPT search, which is where citations
+come from, and `ChatGPT-User` is a fetch a person triggered, for which OpenAI
+says robots rules "may not apply". Anthropic splits the same way: `ClaudeBot`,
+`Claude-SearchBot` and `Claude-User`. Blocking the search token is what
+guarantees you are never cited. Blocking only the training token is a separate
+choice with a separate cost. If the plan is to be the source, the search and
+user fetchers have to be allowed in. The tokens change, so re-check the
+operators' pages when revisiting the file. `templates/next/robots.ts` carries
+the same list.
 
 **3. Watch for over-broad blocks catching useful routes.** The classic case: a
 blanket `Disallow: /api/` that also blocks the dynamic social-image endpoint, so
@@ -309,6 +323,11 @@ have them re-crawled promptly instead of waiting for discovery.
 Worth wiring when content is dated or periodic, where a crawl that arrives days
 late means the information is already stale. Roughly free to implement.
 
+It reaches the participating engines (Bing, Yandex, Naver, Seznam, Yep and
+others listed at indexnow.org), not Google. For Google, the levers are a
+`lastmod` backed by a real content date and internal links from pages it
+already crawls often.
+
 ```
 POST https://api.indexnow.org/indexnow
 { "host": "example.com", "key": "<key>", "urlList": ["https://example.com/page"] }
@@ -356,7 +375,7 @@ After any change to this layer, check the deployed site rather than the code:
 
 ```sh
 curl -s https://example.com/robots.txt
-curl -s https://example.com/sitemap.xml | grep -c "<loc>"
+curl -s https://example.com/sitemap.xml | grep -o "<loc>" | wc -l
 curl -sI https://example.com/ | grep -i "^location\|^cache-control"
 curl -s https://example.com/some/page | grep -i "rel=\"canonical\"\|<title>"
 ```

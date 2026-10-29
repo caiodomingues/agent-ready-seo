@@ -320,7 +320,7 @@ fit without dropping whole sections, splitting it per section is an option;
 that one is the user's decision (see SKILL.md).
 
 **Give `llms-full.txt` a byte budget.** Its reader is a context window. Around
-300 KB of Portuguese or English prose is roughly 75k tokens, and past that the
+300 KB of prose is roughly 75k tokens, and past that the
 tail is never read. Fill newest-first up to the budget, always admit at least
 one article, and list the overflow as title plus link under its own heading, so
 the file says "these exist, fetch them" instead of silently truncating. A budget

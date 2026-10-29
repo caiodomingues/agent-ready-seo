@@ -78,7 +78,7 @@
     },
     {
       "id": 6,
-      "prompt": "Audit this site for AEO and GEO problems: https://example.com. It has a blog, a set of calculators, a public price index on a subdomain, and a logged-in app.",
+      "prompt": "Audit our site for AEO and GEO problems before we hand it to an agency. It has a blog, a set of calculators, a public price index on a subdomain, and a logged-in app. The production URL is in the repo's .env as SITE_URL; if you can't reach it, tell me what you would check and how.",
       "expected_output": "Should read references/pitfalls.md and use its checklist. Should verify against the deployed site with curl rather than against code: canonical host, robots.txt including AI agents and the social image route, unknown-path 404, sitemap count and absence of .md URLs, lastmod honesty, twin headers, llms.txt claims against reality, rendered titles against the limit, cache-control on public pages, structured data against visible claims, the shared organization @id across the subdomain, about and contact pages, first-touch capture and its schema. Should verify each finding before reporting it, distinguishing deliberate deviations from bugs. Should propose the inventory crawl and an external readiness scan, recording failed check IDs.",
       "assertions": [
         "Works from the pitfalls checklist, top to bottom",

@@ -2,7 +2,7 @@
 name: agent-ready-seo
 description: Use when a site needs to be readable and citable by AI answer engines as well as search crawlers. Covers the markdown twin layer, llms.txt, structured data, programmatic pages backed by real data, publishing a citable dataset, and attributing AI referrals. Also use when the user mentions "AEO", "GEO", "answer engine optimization", "generative engine optimization", "llms.txt", "llms-full.txt", "markdown version of my pages", "get cited by ChatGPT", "AI search traffic", "AI crawlers", "JSON-LD", "structured data", "Dataset schema", "programmatic SEO", "thin content", "doorway pages", "comparison page", "vs page", "alternatives page", "sitemap", "canonical", "IndexNow", "title tag", "CTR", "click-through rate", "Search Console", "title experiment", "AI-generated content", "byline", "agent readiness score", "is-agentic", "WebMCP", or "where is my AI traffic coming from". For persuasion and page copy see copywriting; for classic on-page issue hunting see seo-audit.
 metadata:
-  version: 1.5.0
+  version: 1.5.1
 license: MIT
 ---
 
@@ -87,7 +87,7 @@ backwards: writing a hundred pages before having anything different to say.
    titles or templates is an experiment with a register, a control and a
    baseline taken before the deploy; see `references/measurement.md`.
 8. **Treat the data as a recurring publication.** An index that stops updating
-   stops being citable within two months. The routine is part of the asset.
+   stops being citable within about two periods. The routine is part of the asset.
 
 ---
 
@@ -165,7 +165,7 @@ contract it implements, so it can be read without this skill loaded.
 Adapt rather than transplant:
 
 - Replace `SITE_URL` with the canonical host, including the `www` decision.
-- Replace the example content sources (`getGuides`, `getPosts`) with the project's
+- Replace the example content sources (`getGuide`, `getPublishedPosts`) with the project's
   real ones. Never leave a template's placeholder data in a shipped file.
 - Keep the comments that explain a constraint (why `lastmod` is conditional, why
   the item route precedes the region route). Drop the ones that narrate the
@@ -184,16 +184,16 @@ matters. The framework is an implementation detail of that contract.
 programmatic pages, the technical base, structured data, attribution of AI
 referrals.
 
+**Out of scope.** Acquiring the data in the first place (scraping, licensing,
+normalization pipelines) is a separate discipline with its own legal and ethical
+constraints. This skill assumes the data exists and is yours to publish.
+
 **Also out of scope.** Making the *product* operable by an agent: authentication
 an agent can complete, controls it can drive, an API or MCP server for your
 product, a machine-payable checkout. External scorers weight those heavily, so a
 site that follows this skill completely will still not score full marks. That is
 expected. See the layer mapping in `references/verification.md`; whether to
 start that work is one of the user's decisions above.
-
-**Out of scope.** Acquiring the data in the first place (scraping, licensing,
-normalization pipelines) is a separate discipline with its own legal and ethical
-constraints. This skill assumes the data exists and is yours to publish.
 
 **Adjacent skills.** `seo-audit` for hunting on-page issues, `programmatic-seo`
 for keyword-side opportunity sizing, `schema-markup` for a broader catalog of
