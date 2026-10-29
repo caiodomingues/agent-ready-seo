@@ -45,7 +45,7 @@ Read the reference for the layer in play. Do not read all of them.
 | Know whether any of it worked, and where AI traffic lands | `references/measurement.md` | `templates/next/first-touch.ts` |
 | Change titles or templates as an experiment, without touching URLs | `references/measurement.md` (experiments), `references/foundations.md` (titles) | `templates/next/seo-metadata.ts` |
 | Keep articles correct after the code they explain changes | `references/foundations.md` (entities and authorship) | `templates/generic/content-review.js` |
-| Audit an existing site, or review a plan before building | `references/pitfalls.md` | none |
+| Audit an existing site, or review a plan before building | `references/pitfalls.md` (checklist, top to bottom), then `references/verification.md` (the inventory crawl and an external scan) | none |
 | Check that any of it actually works, in production or in CI | `references/verification.md` | none |
 | Act on an agent-readiness scanner report | `references/verification.md` (Loop 2), then the decisions table below | none |
 

@@ -387,7 +387,9 @@ the code, because the gap between them is the point.
 Two rules make the difference between an audit that finds things and one that
 produces a list of generic recommendations.
 
-**Verify against production, not against intent.** Fetch the deployed URL. Count
+**Verify against production, not against intent.** Start from the inventory
+crawl in `references/verification.md`, then work the checklist above top to
+bottom against what it found. Fetch the deployed URL. Count
 the deployed sitemap. Read the deployed `llms.txt`. Most findings live in the gap
 between what the code says and what is served.
 
