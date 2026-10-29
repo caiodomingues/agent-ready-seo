@@ -11,7 +11,7 @@
         "Twins excluded from the sitemap; rel=alternate added per page",
         "llms.txt generated from content, with question map and when-to-use section",
         "llms.txt does not promise twins for page types that lack them",
-        "The proposed llms.txt generator reads the twin registry (no hardcoded section paths), and the same registry feeds rewrites, negotiation and rel=alternate",
+        "Every .md URL the proposed llms.txt generator emits comes from the twin registry, not from a hand-built .md path, and the same registry feeds rewrites, negotiation and rel=alternate",
         "Mentions Accept negotiation and that Next.js drops Vary on the HTML response",
         "Verification is against a production build with curl, not the dev server"
       ],
